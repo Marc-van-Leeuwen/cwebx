@@ -1,0 +1,5 @@
+* Ensure all references to ctangle and cweave have an x appended
+o [marc] Make the --version option work with ctanglex and cweavex
+o [marc] Make a distribution building system and a simplified makefile
+o [marc] Ensure all Nelson Beebe's complaints are being dealt with
+

@@ -1,0 +1,68 @@
+# this is a makefile to update the distribution
+
+# the distribution will be assembled in some subdirectory called cweb-$version
+# that will be romoved afterwards; by default under the current directory
+PARENT := $(shell pwd)
+
+VERSION := $(shell perl getversion.pl intro.inc)
+DIRNAME := cweb-$(VERSION)
+DIR     := $(PARENT)/$(DIRNAME)
+IN      := $(HOME)/cwebx/inputs
+MAINFILES := Makefile README configure \
+     common.inc intro.inc \
+     common.w ctangle.w \
+     cweave.w parser.w rules.w \
+     man1/cweb.1 \
+     examples/compare.w examples/wc.w \
+     examples/treeprint.w examples/wmerge.w \
+     examples/Makefile
+BOOTSTRAPFILES := common.c common.h ctangle.c
+MACROFILES := cwebcmac.tex cwebxmac.tex cwebhmac.tex
+MANUALFILES := manual.tex compare.tex
+FILELIST := $(MAINFILES) $(BOOTSTRAPFILES) $(MACROFILES) $(MANUALFILES)
+FILES := $(FILELIST:%=$(DIR)/%)
+TARFILE:= $(HOME)/public_html/CWEBx/cweb-$(VERSION).tgz
+
+RM :=	rm -f
+
+.PHONY: all version prepare
+
+all:	$(TARFILE)
+version:
+	@echo $(VERSION)
+prepare:
+	-mkdir $(DIR) $(DIR)/man1 $(DIR)/examples
+
+# the tarfile requires the files in the subdirectory
+$(TARFILE): $(FILES)
+	cd $(PARENT); tar cvzf $@ $(DIRNAME); rm -rf  $(DIRNAME)
+
+$(FILES): prepare
+
+# a static pattern rule for files copied from here or subdirectories
+$(MAINFILES:%=$(DIR)/%) : $(DIR)/% : %
+	cp -p $< $@
+
+# build the bootstrap files with -l flag for readability
+$(DIR)/common.h $(DIR)/common.c: $(DIR)/common.w
+	cd $(DIR); $(PARENT)/ctanglex -l common
+$(DIR)/ctangle.c: $(DIR)/ctangle.w
+	cd $(DIR); $(PARENT)/ctanglex -l ctangle
+
+# a static pattern rule for macro files, copied from $(HOME)/macros
+$(MACROFILES:%=$(DIR)/%) : $(DIR)/% : $(HOME)/macros/%
+	cp -p $< $@
+
+# a static pattern rule for macro files, copied from $(IN)
+$(MANUALFILES:%=$(DIR)/%) : $(DIR)/% : $(IN)/%
+	cp -p $< $@
+
+# make sure bootstrap files are up to date
+common.c common.h: common.w common.inc
+	ctanglex common
+
+ctangle.c: ctangle.w common.inc
+	ctanglex ctangle
+
+$(IN)/compare.tex: $(IN)/compare.w
+	cd $(IN); cweave +md compare

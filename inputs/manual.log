@@ -1,0 +1,41 @@
+This is TeX, Version 3.141592 (Web2C 7.5.6) (format=tex 2008.5.6)  11 FEB 2009 15:28
+**manual.tex
+(./manual.tex (/home/marc/macros/cwebxmac.tex
+\indentunit=\dimen16
+\PPbox=\box16
+\MMbox=\box17
+\SSbox=\box18
+\MODbox=\box19
+\bak=\box20
+\bakk=\box21
+\ind=\count26
+\pl=\count27
+\intersecskip=\skip18
+\gdepth=\count28
+\secpagedepth=\count29
+\gtitle=\toks12
+\pagewidth=\dimen17
+\pageheight=\dimen18
+\fullpageheight=\dimen19
+\pageshift=\dimen20
+\cont=\write0
+\sbox=\box22
+\lbox=\box23
+\twodigits=\count30
+) 1  Overview
+2  About literate programming [1.2
+\openout0 = `manual.toc'.
+
+] [2.2] [3.2] [4.2]
+3  What a\/ {\tentt CWEB} program looks like [5.3] (./compare.tex
+(/home/marc/macros/cwebxmac.tex) [6.3] [7.3]) [8.3]
+4  How to create a\/ {\tentt CWEB} program [9.4] [10.4] [11.4] [12.4] [13.4]
+[14.4] [15.4] [16.4] [17.4]
+5  Invocation of {\tentex CTANGLE} and {\tentex CWEAVE} [18.5] [19.5] [20.5]
+6  Subsidiary input files and change files [21.6]
+7  Control codes for advanced or emergency use [22.7] [23.7] [24.7] [25.7]
+[26.7] [27.7] 8  Some features of the standard format [28.8]
+9  Comparison with Levy/Knuth {\tentex CWEB} [29.9] [30.9]
+10  Summary of\/ {\tentt CWEB} codes [31.10] [32.10] Table of contents:
+(./manual.toc) [0] )
+Output written on manual.dvi (33 pages, 224508 bytes).

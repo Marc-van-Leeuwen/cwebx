@@ -1,0 +1,32 @@
+\catcode `\@=11 
+\Z {1}{Overview}{1}
+\Z {2}{About literate programming}{2}
+\z {Structured programming}{2}
+\z {Limitations of traditional structured programming}{2}
+\z {Requirements for literate programming}{3}
+\z {WEB systems for literate programming}{4}
+\Z {3}{What a\/ {\tentt CWEB} program looks like}{5}
+\z {Some remarks about the example program}{8}
+\z {Further attributes of\/ {\tentt CWEB} programs}{8}
+\z {Output to multiple files}{9}
+\Z {4}{How to create a\/ {\tentt CWEB} program}{10}
+\z {The general setup}{10}
+\z {Sectioning codes: `\/\.{@*}', `\/\.{@ }', `\/\.{@\~}'}{11}
+\z {Subsectioning codes: `\/\.{@d}', `\/\.{@h}', `\/\.{@f}', `\/\.{@c}', `\/\.{@< {\relax $\mathsurround \z@ \mathinner {\ldotp \ldotp \ldotp }\mskip \thinmuskip $} @>=}'}{12}
+\z {Text within \hbox {\ninerm C}\penalty \@M \ program fragments: comments and module names}{15}
+\z {\hbox {\ninerm C}\penalty \@M \ code within text: `\.{|...|}' fragments}{15}
+\z {Modules producing additional output files: `\/\.{@( {\relax $\mathsurround \z@ \mathinner {\ldotp \ldotp \ldotp }\mskip \thinmuskip $} @>}'}{16}
+\z {Control codes that help parsing in special situations: `\/\.{@;}', `\/\.{@[}', `\/\.{@]}'}{16}
+\Z {5}{Invocation of {\tentex CTANGLE} and {\tentex CWEAVE}}{18}
+\z {Command line options}{18}
+\z {File name arguments}{20}
+\Z {6}{Subsidiary input files and change files}{21}
+\Z {7}{Control codes for advanced or emergency use}{23}
+\z {Control codes for cross-referencing: `\/\.{@!}', `\/\.{@\^}', `\/\.{@.}', `\/\.{@?}', `\/\.{@:}', `\/\.{@\#}'}{23}
+\z {Control codes for layout in programs: `\/\.{@,}', `\/\.{@|}', `\/\.{@/}', `\/\.{@)}', `\/\.{@\\}', `\/\.{@+}', `\/\.{@;}'}{24}
+\z {Codes for special items in\/ \hbox {\ninerm C}\penalty \@M \ code: `\/\.{@p}', `\/\.{@v}', `\/\.{@t}', `\/\.{@\&}', `\/\.{@=}', `\/\.{@'}'}{25}
+\z {Control codes behind the scenes: `\/\.{@s}', `\/\.{@q}', `\/\.{@l}'}{26}
+\z {Control codes for tracing {\tentex CWEAVE}: `\/\.{@0}', `\/\.{@1}', `\/\.{@2}', `\/\.{@3}'}{27}
+\Z {8}{Some features of the standard format}{29}
+\Z {9}{Comparison with Levy/Knuth {\tentex CWEB}}{30}
+\Z {10}{Summary of\/ {\tentt CWEB} codes}{31}
