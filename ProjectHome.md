@@ -1,0 +1,1 @@
+CWEBx is a system for literate programming (a form of Structured Documentation) for programs written in C/C++. It was forked off from the CWEB system by Levy/Knuth in the early 1990's, and has served (at least) for two algebraic computatation packages maintained by the auther of CWEBx, namely LiE and the Atlas of Lie Groups and Represntations project.
