@@ -35,7 +35,7 @@ smaller values allow \.{CWEB} to run on rather moderate size computers.
 @d max_sections 4000
    /* greater than the total number of sections, and less than $10240$ */
 @d hash_size 353 /* hash modulus, preferably odd */
-@d buf_size 200 /* maximum length of input line, plus two */
+@d buf_size 500 /* maximum length of input line, plus two */
 @d longest_name 1000
    /* module names and strings shouldn't be longer than this */
 @d long_buf_size (buf_size+longest_name) /* for \.{CWEAVE} */

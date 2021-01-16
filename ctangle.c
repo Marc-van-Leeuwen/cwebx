@@ -1,4 +1,4 @@
-#define version_string "x3.52"
+#define version_string "x3.6"
 #define banner "This is CTANGLE (version " version_string ")"
 #define max_toks 150000L
 #define max_texts 2500
@@ -18,7 +18,7 @@
 #define max_idents 5000
 #define max_sections 4000
 #define hash_size 353
-#define buf_size 200
+#define buf_size 500
 #define longest_name 1000
 #define long_buf_size (buf_size+longest_name)
 #define local static

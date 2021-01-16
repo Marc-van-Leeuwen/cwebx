@@ -789,17 +789,19 @@ We start with rules for `\&{operator}', which are simple: it should combine
 with a following operator symbol of any type, or |subscript|, or |lpar, rpar|,
 to form an expression (rules 260--262). We force the operators to be
 interpreted as ordinary symbols in math mode for proper spacing (except for
-|unop|, operators which already get proper spacing); the argument
-for the ``mathord'' control is enclosed in braces in case of a |binop| token,
-since this might be a compound operator like |+=| (this could cause problems
-is a comment follows the operator token; don't do that). Then rules 263--266
-take care of the `::'~operator: either a class name or an expression (a
-namespace identifier) or nothing is expected at the left, and either an
-ordinary or a class identifier at the right; the resulting category is that of
-the right hand side. However, we must make sure that the contraction of
-|int_like| scraps does not absorb class name used before `::' into a possibly
-preceding type name; therefore rule~266 doubles rule~265 in case of a
-preceding |int_like| scrap.
+|unop|, operators which already get proper spacing); the argument for the
+``mathord'' control is enclosed in braces in case of a |binop| token, since
+this might be a compound operator like |+=| (this could cause problems if a
+comment follows the operator token; don't do that). Then rules 263--266 take
+care of the `::'~operator: either a class name or an expression (a namespace
+identifier) or nothing is expected at the left, and either an ordinary or a
+class identifier at the right; the resulting category is that of the right
+hand side. However, we must make sure that the contraction of |int_like|
+scraps does not absorb a class name used before `::' into a possibly preceding
+type name; therefore rule~266 doubles rule~265 in case of a preceding
+|int_like| scrap. Rule~267 takes care of range-based for loops by contracting
+the elements inside the parentheses to an |expression|, which the rules for
+|for| loops will then take care of.
 
 @< Rules @>=
 {260, {{case_like, binop}},	{expression, "_o{_}"},only_plus_plus},	@/
@@ -822,7 +824,9 @@ preceding |int_like| scrap.
 {266, {{int_like, int_like, colcol, expression},1},
 				{expression, NULL},only_plus_plus},	@/
 {266, {{int_like, int_like, colcol, int_like},1},
-				{int_like, NULL},only_plus_plus},	@[@]
+				{int_like, NULL},only_plus_plus},	@/
+{267, {{int_like, expression, colon, expression}},
+				{expression, "_~!_m__"},only_plus_plus},@[@]
 
 @ Type identifiers may appear as the left hand side of an assignment within a
 list of formal parameters, indicating a default argument; in this case the

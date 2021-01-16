@@ -27,7 +27,7 @@ CWFLAGS = +mde
 
 # The -ansi flag (for gcc) should guard against spurious #include files
 # We keep debugging info around to enable the `+d' option of cweave
-CFLAGS = -ansi -DSTAT
+CFLAGS = -ansi -DSTAT -DDEBUG
 
 # RM and CP are used below in case rm and cp are aliased
 

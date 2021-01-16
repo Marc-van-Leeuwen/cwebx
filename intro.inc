@@ -1,4 +1,4 @@
-\def\currentCWEBxversion{x3.52} % see also version_string end of this file
+\def\currentCWEBxversion{x3.6} % see also version_string end of this file
 
 \def\hang{\hangindent 3em\indent\ignorespaces}
 \def\pb{$\.|\ldots\.|$} % C brackets (|...|)
@@ -87,4 +87,4 @@ for the current version. If they choose to make the resulting program
 available under the name \.{\me.}, they should modify the non-numeric
 prefix of the version specification.
 
-@d version_string "x3.52"
+@d version_string "x3.6"

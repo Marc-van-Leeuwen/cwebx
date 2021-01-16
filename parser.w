@@ -395,13 +395,17 @@ null-terminated string provided the other pointer is null.
 
   id_lookup("case", NULL, case_like);
   id_lookup("const", NULL, const_like);
+  id_lookup("constexpr", NULL, const_like);
   id_lookup("default", NULL, case_like);
+  id_lookup("decltype", NULL, sizeof_like);
   id_lookup("do", NULL, do_like);
   id_lookup("else", NULL, else_like);
   id_lookup("enum", NULL, struct_like);
   id_lookup("extern", NULL, C_plus_plus ? extern_like : int_like);
   id_lookup("for", NULL, while_like);
   id_lookup("if", NULL, if_like);
+  id_lookup("mutable", NULL, const_like);
+  id_lookup("noexcept", NULL, const_like);
   id_lookup("sizeof", NULL, sizeof_like);
   id_lookup("struct", NULL, struct_like);
   id_lookup("switch", NULL, while_like);
@@ -411,6 +415,7 @@ null-terminated string provided the other pointer is null.
   id_lookup("volatile", NULL, const_like);
   id_lookup("while", NULL, while_like);
   id_lookup("NULL", NULL, NULL_like);
+  id_lookup("nullptr", NULL, NULL_like);
   id_lookup("TeX", NULL, TeX_like);
   if (C_plus_plus) @<Store reserved words for \Cpp@>
 }

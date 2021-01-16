@@ -1,4 +1,4 @@
-This file is part of CWEBx (version 3.52 at the time of writing; the actual
+This file is part of CWEBx (version 3.6 at the time of writing; the actual
 version number is defined near the end of intro.inc, and can be found by
 running ctanglex or cweavex with the --version flag). It explains briefly what
 CWEB is, and how to set it up, and what the various files are for.

@@ -9,7 +9,7 @@
 #define max_idents 5000
 #define max_sections 4000
 #define hash_size 353
-#define buf_size 200
+#define buf_size 500
 #define longest_name 1000
 #define long_buf_size (buf_size+longest_name)
 #define local static
