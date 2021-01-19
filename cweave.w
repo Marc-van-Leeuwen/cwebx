@@ -1763,7 +1763,7 @@ already contains a |switch| on the value of |next_control|, which has a
 special case for identifiers. So let us first consider the identifier cases
 (including reserved words).
 
-@f example scrap /* pretend |example| is |type_defined| */
+@f example xref_info /* pretend |example| is |type_defined| */
 @f examp2 example /* and |examp2| is another such identifier */
 
 @< Track identifiers... @>=
