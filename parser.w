@@ -158,20 +158,20 @@ towards the target language (\TeX) rather than towards the source language
 (\Cee).
 
 @*2 Categories of scraps.
+%
 Here is a list of the category codes that scraps can have. The category codes
 that apply to reserved words (e.g., |while_like|, but also |declaration| for
 |va_dcl|) as well as |expression| (that is used for |type_defined| identifiers
-in their typedef declaration) are also used as their |ilk| value, and they are
-sufficiently high that they can be distinguished from |ilk| values that are
-not category codes, like |type_defined|, |TeX_like|, |NULL_like|,
-|const_like|, |typedef_like| and |namespace_like|; thus reserved words will
-never be mistaken for identifiers with such an ilk, and we can safely
-substitute certain such |ilk| values by a different category code as happens
-in section@#ilk change@>. A number of categories can occur in scraps, but do
-not occur in any of the reduction rules, since they are handled by other
-means; they have values $\geq{}$|min_nonrule_cat|. The macro |valid_cat|
-checks whether |c| is a category that might match in a rule; it uses its
-argument twice, so its argument should not cause a side effect. If this
+within their own typedef declaration) are also used as their |ilk| value, and
+they are sufficiently high that they can be distinguished from the less than
+$20$ |ilk| values listed in section@#ilks@> that are not used as category codes;
+thus reserved words will never be mistaken for identifiers with such an ilk.
+Also we can safely substitute a different category code for certain such low
+|ilk| values by as happens in section@#ilk change@>. A number of categories can
+occur in scraps, but do not occur in any of the reduction rules, since they are
+handled by other means; they have values $\geq{}$|min_nonrule_cat|. The macro
+|valid_cat| checks whether |c| is a category that might match in a rule; it uses
+its argument twice, so its argument should not cause a side effect. If this
 section is changed, section@#category output@> should be changed
 correspondingly.
 
@@ -212,16 +212,16 @@ enum @/ @:categories@>
   if_like,
   else_like,
   extern_like,
-  throw_like, try_like, catch_like, /* single tokens */
+@/namespace_like, template_like, throw_like, try_like, catch_like,
+    /* each a single token */
   int_like, /* `|int|', `|char|', \dots  */
   case_like, /* `|case|', `|default|' */
-  sizeof_like, /* `|sizeof|', `|const|', `\&{new}', `\&{delete} */
+  sizeof_like, /* `|sizeof|', `|const|', `\&{new}', `\&{delete}' */
   struct_like, /* `|struct|', `|union|', `|enum|',
                   `\&{class}', `\&{typename}' */
   return_like, /* `|return|', `|break|', `|continue|', `|goto|' */
-  template_like, langle, rangle,
-              /* `\&{template}', `$\langle$', `$\rangle$', for \Cpp */
-  templ_params, /* template parameters */
+  langle, rangle, templ_params,
+    /* `$\langle$', `$\rangle$', template parameters; for \Cpp */
   lproc, /* `\&\#' and following identifier starting preprocessor directive */
   rproc, /* end of a preprocessor directive */
   insert, /* comment or other syntactically inert item */
@@ -348,9 +348,9 @@ void print_cat (int c) /* symbolic printout of a category */
   , "if_head", "if_else_head", "do_head"
   , "mod_name", "declarator", "decl", "exp"
   , "for", "do", "if", "else", "extern"
-  , "throw", "try", "catch,"
+  , "namespace", "template", "throw", "try", "catch,"
   , "int", "case", "sizeof", "struct", "return"
-  , "template", "<", ">", "templ_params"
+  , "<", ">", "templ_params"
   , "#{", "#}", "insert", "@@[", "@@]"
   };
   if (c<=max_category && c>0) printf("%s",cat_name[c-1]);
@@ -420,19 +420,19 @@ null-terminated string provided the other pointer is null.
   if (C_plus_plus) @<Store reserved words for \Cpp@>
 }
 
-@ One main difference between \Cee\ and \Cpp, as far as \.{\me.} is
-concerned, is that the latter has a number of additional reserved words. Most
-of them are sufficiently like some \Cee-reserved word (or category) that we
-can simply make it behave like that \Cee~symbol, without changing the syntax.
-For `\&{new}', `\&{delete}', and `\&{operator}', some additional syntax rules
-will be needed however; nevertheless we do not need to extend the set of
-syntactic categories. For `\&{operator}' we abuse the category |case_like|,
-since its proper use is rather restricted (`|case|' it is always followed by
-an expression, while `|default|', `\&{private}' and its relatives are always
-followed by a colon), so there will be no confusion with `\&{operator}', which
-is always followed by an operator symbol. Similarly, the different cast
-operators are always followed by an operator (`$<$') which |sizeof| is never,
-so they should not cause confusion.
+@ One main difference between \Cee\ and \Cpp, as far as \.{\me.} is concerned,
+is that the latter has a number of additional reserved words. Most of them are
+sufficiently like some \Cee-reserved word (or category) that we can simply make
+it behave like that \Cee~symbol, without changing the syntax; however some new
+categories like |namespace_like|, |template_like|, |throw_like| do arise. For
+`\&{new}', `\&{delete}', and `\&{operator}' we do not need to extend the set of
+syntactic categories, although the will give rise to some additional syntax
+rules. For `\&{operator}' we give an independent use to the category
+|case_like|, since being always followed by an operator symbol, it will not
+cause confusion with `|case|', `|default|', `\&{private}' and such (though the
+expression following |case| could start with a monadic operator, so this is not
+entirely true). Similarly, the different cast operators are always followed by
+an operator (`$<$') which |sizeof| is never, so they should not cause confusion.
 
 @<Store reserved words...@>=
 { int i;
@@ -575,7 +575,7 @@ record the number of positions (usually negative) by which the parsing
 pointer~|pp| should be changed after application of the rule to have any
 chance of subsequently matching another (or the same) rule.
 
-@d max_lhs_length 4
+@d max_lhs_length 5
 
 @< Typedef and enumeration declarations @>=
 
@@ -621,7 +621,7 @@ because the root of the trie does not figure as a successor of any node. We do
 not attempt a sparse representation (which would avoid storage of such 0's),
 but we do use a relatively compact |sixteen_bits| representation for the
 entries of |q->next|, which saves a considerable amount of space, since there
-is a total of |(min_nonrule_cat-1)*max_no_of_nodes| such entries? (The entries
+is a total of |(min_nonrule_cat-1)*max_no_of_nodes| such entries. (The entries
 used to be |eight_bits| number, but for a decent grammar for \Cpp\ a limit of
 256 trie nodes was too restrictive. One could extend the possibilities of such
 small numbers a but by using the fact that the successor of a trie node always

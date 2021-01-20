@@ -56,7 +56,7 @@ their earlier values which were sufficient in the original |WEB| to handle
 @d max_texts 2500 /* number of phrases in \Cee\ texts being parsed;
   must be less than |10240| */
 @d max_scraps 4000 /* number of tokens in \Cee\ texts being parsed */
-@d max_no_of_nodes 300 /* number of nodes in search trie for grammar rules,
+@d max_no_of_nodes 512 /* number of nodes in search trie for grammar rules,
   must be at most |65536| */
 @d line_length 80 /* maximal line length for \TeX\ output;
   should be less than |256| */
@@ -125,7 +125,7 @@ void phase_three (void); /* output the \xr. index */
 @i common.inc
 
 
-@*1 Data structures exclusive to {\tt \me.}. @:title@>
+@*1 Data structures exclusive to {\tt \me.}. @:title@> @:ilks@>
 %
 Although the eventual typeset output produced after running \.{\me.} is meant
 to closely resemble the \.{CWEB} source from which it was created (or maybe it
@@ -177,17 +177,17 @@ reserved words for indexing purposes, i.e., only underlined references are
 generated.
 
 \yskip\hang |const_like| and similar identifiers are \Cee\ reserved words that
-will be typeset in boldface; their |ilk| values all exceed |NULL_like|. Most
-of these values are also the category codes for these tokens (defining their
-parsing behaviour), and defined in section@#categories@> together with the
-other category codes. Some special cases are given here, for tokens that need
-a distinguished |ilk| only during lexical analysis: |const_like| and
+will be typeset in boldface; their |ilk| values all exceed |NULL_like|. Most of
+these values are also the category codes for these tokens (defining their
+parsing behaviour), and defined in section@#categories@> together with the other
+category codes. Some special cases are given here, for tokens that need a
+distinguished |ilk| only during lexical analysis: |const_like| and
 |typedef_like| will become |int_like| in parsing (and the same holds for
 |type_defined| identifiers). The remaining values are used only for \Cpp:
 |and_like| and |not_like| become |binop| and |unop| respectively, but also
-trigger |reserved|; |namespace_like| and |typename_like| will become
-|struct_like|, but remain different during phase~I to (conditionally for
-|typename_like|) avoid making the identifier following it |type_defined|.
+trigger |reserved|; |typename_like| will become |struct_like|, but remains
+different during phase~I to conditionally avoid making the identifier following
+it |type_defined|.
 
 @f TeX_like TeX
 
@@ -207,7 +207,7 @@ enum @/
   type_defined, /* |ilk| of identifiers that are defined by |typedef| */
   TeX_like, NULL_like,
     /* |ilk| of identifiers with user-given control sequences */
-  const_like, typedef_like, and_like, not_like, namespace_like, typename_like
+  const_like, typedef_like, and_like, not_like, typename_like
      /* special reserved words */
 };
 
@@ -1461,14 +1461,18 @@ table, by following all non-empty hash lists.
 repeatedly popping values off one list~|x| and pushing them onto the reversed
 list~|y| (or you may read ``stack'' for ``list'' if you like). It can also be
 useful to remember that the basic action can be performed by a four-stroke
-engine, where the left hand side of each assignment equals the right hand side
-of the previous one. The basic cycle can actually take different forms, each
-using an auxiliary variable~|t|. One way is to use~|t| to hold the entry moved
-(``hold the head''), repeating |{ t=x; x=t->next; t->next=y; y=t;}| until
-|x==NULL|; another way is to use~|t| to hold the remainder of the list to be
-reversed (``hold the tail''), repeating |{ t=x->next; x->next=y; y=x; x=t;}|,
-again until |x==NULL|. For reversing the \xr. lists of identifiers, we use
-hold-the-head.
+cycle, which cyclically permutes the pointers held int the locations |x|, |y|,
+and (what is initially) |x->next|, repeated until |x==NULL|. Such a $3$-cyclic
+permutation can be realised by four assignments, the first of which is to a
+temporary~|t|, and the left hand side of each remaining assignment equals the
+right hand side of the previous one; it can actually take different forms with
+the same effect, depending on which pointer is stored in~|t|. One way is to
+use~|t| to hold the entry moved (``hold the head''), repeating |{ t=x;
+x=t->next; t->next=y; y=t;}|; another way is to use~|t| to hold the remainder of
+the list to be reversed (``hold the tail''), repeating |{ t=x->next; x->next=y;
+y=x; x=t;}|. A third way is to hold |y|, performing |{ t=y; y=x; x=y->next;
+y->next=t; }|, but this hardly evokes popping off |x| and then pushing onto |y|.
+Here, for reversing the \xr. lists of identifiers, we use hold-the-head.
 
 @< Reverse the list |name->xref| @>=
 {
@@ -1559,10 +1563,13 @@ Fortunately |typedef| declarations cannot be nested inside each other,
 so we can use global variables to keep the proper counts. Three integer
 counters are used, two for the nesting levels of braces and parentheses,
 which are set to~0 whenever a |typedef| is scanned and properly maintained
-thereafter, and a master counter which determines if we are paying
-attention at all.
+thereafter, and a master counter which determines if we are
+paying attention at all. The latter counter |typedef_master| will sometimes be
+temporarily lowered to a negative value to suspend any action until it is raised
+to it old value again; the sections in question start with
+|typedef_tracking(false)| and end with |typedef_tracking(true)|.
 
-@d typedef_tracking(b) (typedef_master += b ? 5 : -5)
+@d typedef_tracking(b) (typedef_master += b ? 5 : -5) /* raise or lower by 5 */
 
 @< Global... @>=
 local int typedef_master=-5; /* tracking disabled outside \Cee~parts */
@@ -1588,10 +1595,11 @@ counter is not~1 at this point no identifier has been marked, and the user is
 warned.
 
 In \Cpp\ we must track angle brackets, as said above, but there is one more
-complication. In a typedef definition like $\&{typedef}\
-\&{Some\_class}{::}\&{type\_member}\ \&{new\_type};$ we must not make the
-identifier \&{type\_member} following |colon_colon| type-defined (which it
-already is), although it is encountered at level~$4$ (the class name
+complication. In a typedef definition like
+$\&{typedef}\ \&{Some\_class}{::}\&{type\_member}\ \&{new\_type};$,
+we must not make the identifier \&{type\_member} following |colon_colon|
+type-defined (which it already is), although it is encountered at level~$4$ (the
+class name
 \&{Some\_class} has raised it to that level), but wait for \&{new\_type}. To
 this end we undo the effect of seeing the class name by setting
 |typedef_master| back to the level~$2$ when the |colon_colon| is seen.
@@ -1680,17 +1688,17 @@ will simply make the next token |type_defined| if it is an identifier. Upon
 seeing \&{typename} we move to state~$2$, and a successive identifier advances
 to state~$3$ while storing its identity in another static variable |this_id|,
 then if the following token (in state~$3$) is {\it not\/} the namespace
-resolution operation |colon_colon|, then the save identifier will be made
+resolution operation |colon_colon|, then the saved identifier will be made
 |type_defined|.
 
-Should the logic below fail and make an identifier after \&{typename}
-|type_defined| that shouldn't, the literate programmer can as a last resort
-interject a \:\v or \:+ control between the \&{typename} keyword and the
-identifier, which brings the identifier out of reach (this used to be the only
-mechanism to disable \&{typename}). This is not possible in a header file
-being scanned, so as an additional precaution we do nothing when \&{typename}
-seen in header files. This is not so bad, because template arguments serve a
-local purpose in the header file anyway.
+Should the logic below fail, and as a consequence following some \&{typename}
+make an identifier |type_defined| that shouldn't, the literate programmer can as
+a last resort interject a \:\v or \:+ control between the \&{typename} keyword
+and the identifier, which brings the identifier out of reach (this used to be
+the only mechanism to disable \&{typename}). This is not possible in a header
+file being scanned, so as an additional precaution we do nothing
+when \&{typename} seen in header files. This is not so bad, because template
+arguments serve a local purpose in the header file anyway.
 
 @< Take action to mark identifiers following \&{class}... @>=
 { static int class_seen=0; static id_pointer this_id;
@@ -2546,7 +2554,7 @@ reserved words is done using |res_flag| rather than |id_flag|, as a result of
 which they will be printed in boldface; they get mathness |maybe_math|,
 indicating that they can be set equally well inside and outside math mode.
 Identifiers whose |ilk| is |type_defined|, |const_like|, or |typedef_like|
-will become reserved words with category |int_like|, and |namespace_like| of
+will become reserved words with category |int_like|, and
 |typename_like| becomes |struct_like|.
 @:ilk change@>
 These special |ilk| values have served their purpose during the scanning of
@@ -2573,7 +2581,7 @@ later.
       cat=int_like;
     else if (cat==and_like) cat=binop;
     else if (cat==not_like) cat=unop;
-    else if (cat==namespace_like || cat==typename_like) cat=struct_like;
+    else if (cat==typename_like) cat=struct_like;
     pack_scrap(cat,maybe_math);
   }
 }

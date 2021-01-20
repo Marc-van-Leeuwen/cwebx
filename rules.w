@@ -176,6 +176,19 @@ beginning rather than at the end of the construction here, is to prevent the
 Rule~40 only applies if the \:; does not match by any rule with what comes
 before it.
 
+Function heading syntax have changed considerably from the original form in
+K|&|R \Cee\ to the new-style (\caps{ANSI/ISO}) headings and \Cpp\ headings.
+In K|&|R style there are no types in the parameter list nor an initial (result)
+type before the function name, so that function name and parameter list will
+parse as an expression; in the new style and in \Cpp\ types are obligatory in
+the parameter list (unless it is empty) as is an initial result type. Therefore
+we shall use a different reduction path in \Cee\ and in \Cpp. In \Cee\ we shall
+reduce the function name followed by the following |parameters| to
+|function_head| in rule~41, with the optional result type before it being
+incorporated only later (using rule~223). In \Cpp\ however we include the result
+type into |function_head| directly, as soon as it is clear (by the appearance of
+|parameters|) that we are not dealing with a non-function declaration.
+
 Rule~41 parses new-style (\caps{ANSI/ISO}) headings of function definitions
 (while K|&|R style headings are parsed as expressions); the resulting
 |function_head| will not be incorporated into a |declaration| (unless a comma
@@ -189,14 +202,27 @@ specifications using abstract declarators (without identifiers) will be
 treated below. In |struct| declarations we may encounter bit-field
 specifications consisting of a colon followed by a number; we contract that
 into the following semicolon in rule~43, after which de declaration of the
-field can be handled by rule 31~or~32.
+field can be handled by rule 31~or~32. Rules 45--47 deal with use
+of~\&{namespace}: it normally introduces a block that will not have a semicolon
+after its closing brace, and since this is like a function body, we
+make \&{namespace} with or without the following identifier into a
+|function__head|, which will make further reductions apply appropriate
+formatting. However the \&{using}~\&{namespace} combination will not have a
+following block, so we reduce it to |int_like|, which will then make it with
+what should follow it into a |declaration|, which is appropriate.
 
 @< Rules @>=
 {40, {{magic, int_like}},		   {expression, "_$_"}},	@/
-@q $ emacs-cookie @>
-{41, {{expression, parameters}},	   {function_head, "_B_"}},	@/
+{41, {{expression, parameters}}, {function_head, "_B_"},no_plus_plus},	@/
+{41, {{int_like,expression, parameters}},
+                               {function_head, "_~_B_"},only_plus_plus}, @/
 {42, {{lpar, int_like, expression, rpar}}, {parameters, "_+++_~!_---_"}},@/
-{43, {{colon, expression, semi}},          {semi, "m___"}},		@[@]
+{43, {{colon, expression, semi}},          {semi, "m___"}},		@/
+
+{45, {{namespace_like,expression}},
+                               {function_head, "_~_"},only_plus_plus},  @/
+{46, {{namespace_like,lbrace},-1},{function_head,NULL},only_plus_plus}, @/
+{47, {{int_like,namespace_like}},{int_like,"_~_"},only_plus_plus},      @[@]
 
 @ Abstract declarators are used after type specifiers in casts and for
 specifying the argument types in declarations of functions or function
@@ -278,8 +304,9 @@ this to |templ_params|, rules 75--79, and the last of these gets an extra
 incarnation as rule~80 to preempt the recognition of a comparison expression
 using the operator~'|<|'. The result will then combine with the preceding
 template class identifier by rule~81, or with the preceding ordinary
-identifier by rule~82. Rule~78 handles template arguments that are ordinary
-expressions.
+identifier by rule~82. Rule~83 aims to preempt application of rule~30 when
+template arguments hide the right context that would otherwise preempt it; it
+combines application of rules 79~and~81.
 
 @< Rules @>=
 {70, {{lpar, int_like, declarator, comma}}, {lpar, "____p5"}},		@/
@@ -298,10 +325,12 @@ expressions.
 {78, {{langle, rangle}}, {templ_params, "a_a_"},only_plus_plus},	@/
 {79, {{langle, expression, rangle}},
 			{templ_params, "a__a_"},only_plus_plus},	@/
-{80, {{expression, langle, expression, rangle},1},
-			{templ_params, "a__a_"},only_plus_plus},	@/
+{80, {{expression, langle, expression, rangle}},
+			{expression, "_a__a_"},only_plus_plus},		@/
 {81, {{int_like,templ_params}},{int_like, NULL},only_plus_plus},	@/
-{82, {{expression,templ_params}},{expression, NULL},only_plus_plus},	@[@]
+{82, {{expression,templ_params}},{expression, NULL},only_plus_plus},	@/
+{83, {{int_like,int_like, langle, expression, rangle},1},
+			{int_like, "_a__a_"},only_plus_plus},		@[@]
 
 @*2 Structure, union, and enumeration specifiers. It is permissible to use
 typedef identifiers as structure, union, or enumeration tags as well, so we
@@ -457,7 +486,9 @@ when used in a loop statement or after a label. If compound statements are
 not engulfed by a conditional or loop statement (see below) then they decay
 to ordinary statements by rule~138. Rules 139~and~140 reduce aggregate
 initialiser expressions, where the reduction of comma-separated lists of
-expressions is already handled by the expression syntax.
+expressions is already handled by the expression syntax. Rule~141 handles
+constructor calls in \Cpp\ using the new syntax (uniform initialisation)
+with braces replacing parentheses around the arguments (possibly around none).
 
 @< Rules @>=
 {130, {{declaration, declaration}}, {declaration, "_f_"}},		@/
@@ -486,7 +517,11 @@ expressions is already handled by the expression syntax.
 	{compound_statement, "f_+f_-f_"},wide_braces},			@/
 {138, {{compound_statement}},			{statement, "f_f"}},	@/
 {139, {{lbrace, expression, comma, rbrace}},	{expression, "_,__,_"}},@/
-{140, {{lbrace, expression, rbrace}},		{expression, "_,_,_"}},	@[@]
+{140, {{lbrace, expression, rbrace}},		{expression, "_,_,_"}}, @/
+{141, {{int_like, lbrace, expression, rbrace}},
+				{expression, "__,_,_"},only_plus_plus}, @/
+{141, {{int_like, lbrace, rbrace}},
+				{expression, "__,_"},only_plus_plus},	@[@]
 
 @ Like for structure and union specifiers, we allow compound statements to
 be kept on one line by inserting \:; after the left brace. Such statements
@@ -691,12 +726,11 @@ reason the category |function_head| was introduced; it used to be simply
 {225, {{function, declaration}}, {declaration, "_F_"},no_plus_plus},	@/
 {226, {{function, function}},	 {function, "_F_"},no_plus_plus},	@/
 {224, {{function}},		 {declaration, NULL},only_plus_plus},	@/
-{227, {{function_head, semi},-1},  {expression, NULL},no_plus_plus},	@/
-{228, {{function_head, comma},-1}, {expression, NULL}},			@/
-{229, {{function_head, binop},-1}, {expression, NULL}},			@/
-{229, {{function_head, unorbinop},-1}, {expression, NULL}},		@/
-{229, {{function_head, langle},-1}, {expression, NULL}},		@/
-{229, {{function_head, rangle},-1}, {expression, NULL}},		@/
+{228, {{function_head, comma},-1}, {expression, NULL},no_plus_plus},	@/
+{229, {{function_head, binop},-1}, {expression, NULL},no_plus_plus},	@/
+{229, {{function_head, unorbinop},-1}, {expression, NULL},no_plus_plus},@/
+{230, {{function_head, langle},-1}, {expression, NULL}},		@/
+{230, {{function_head, rangle},-1}, {expression, NULL}},		@/
 {230, {{function_head, rpar},-1},  {expression, NULL}},			@[@]
 
 @*2 Module names.
@@ -797,8 +831,8 @@ care of the `::'~operator: either a class name or an expression (a namespace
 identifier) or nothing is expected at the left, and either an ordinary or a
 class identifier at the right; the resulting category is that of the right
 hand side. However, we must make sure that the contraction of |int_like|
-scraps does not absorb a class name used before `::' into a possibly preceding
-type name; therefore rule~266 doubles rule~265 in case of a preceding
+scraps (rule~30) does not absorb a class name used before `::' into a possibly
+preceding type name; therefore rule~266 doubles rule~265 in case of a preceding
 |int_like| scrap. Rule~267 takes care of range-based for loops by contracting
 the elements inside the parentheses to an |expression|, which the rules for
 |for| loops will then take care of.
@@ -825,6 +859,8 @@ the elements inside the parentheses to an |expression|, which the rules for
 				{expression, NULL},only_plus_plus},	@/
 {266, {{int_like, int_like, colcol, int_like},1},
 				{int_like, NULL},only_plus_plus},	@/
+{266, {{int_like, int_like, colcol, case_like},1},
+				{case_like, NULL},only_plus_plus},	@/
 {267, {{int_like, expression, colon, expression}},
 				{expression, "_~!_m__"},only_plus_plus},@[@]
 
@@ -876,42 +912,42 @@ by one notch (rule~279).
 				{declaration,"__f+_-"},only_plus_plus},	@[@]
 
 @ Next we give rules catering with constructor declarations in class
-definitions. First of all we must recognise the fact that the class name is
-being used as a function name here; the simplest solution is to recognise the
-combination of an |int_like| followed by a parameter list (rule~280). We
-cannot let a |function_head| (possibly created by rule~280) decay to an
-|expression| when followed be a semicolon, as we do for~\Cee, since
-declarations of constructor and destructor members of a class lack an initial
-type specification, so the |expression| would fail to become part of a
-|declaration|. Therefore, special measures are necessary: the simplest
-solution is to simply absorb (rules 281~and~282) any preceding type specifier
-into the |function_head| (thereby removing the distinction between its
-presence or absence), and construct de |declaration| explicitly from the
-|function_head| and the following semicolon (rule~283). This absorption is
-only allowed when a semicolon does follow (or a statement, in case of a
-function definition rather than declaration), since when followed by a comma
-or right parenthesis it would perturb the recognition of parameter lists
-containing function (pointer) parameters). We must also absorb |int_like| from
-the other side into a |function_head| (this time independently of what
-follows), since there may be a |const| after the parameters in declarations of
-member functions (rule~284); we need a special rule here to handle
-parameterless function, since the function name followed by empty parentheses
-will have been parsed as an |expression| rather than as a |function_head| in
-this case (rule~285).
+definitions. In \Cpp, the category |function_head| includes the preceding
+(result) type indication, but in the case of constructors and destructors it is
+absent. Therefore we also recognise, in case of such absence, the combination of
+an |int_like| followed by a parameter list (rule~280) as |function_head|. In
+some cases the initial |int_like| erroneously gets combined by rule~30 with a
+following |int_like| that is in fact a class name that is the start of a
+qualified identifier, but too far away from the actual identifier for our
+grammar to preempt rule~30 (for instance because of intervening template
+arguments to the class name); then what remains for the function head ends up
+being just |expression| (not preceded by |int_like| as this has been
+incorporated into it) followed by |parameters|; in order to not have this
+combination obstruct further parsing we add a variation of rule~280 with
+a lone |expression| rather than |int_like|.
+
+When this is a function declaration rather than a definition, we construct the
+|declaration| explicitly from the |function_head| and the following semicolon
+(rule~281). When a comma or operator follows, we transform into |int_like| as in
+rule~33 (rule~282), respectively absorb the binary operator and following
+|expression|, |case_like| (|default|) or |sizeof_like| (|delete|) as alternative
+to rule~229 (rule~283). We absorb |int_like| from the other side into a
+|function_head| (this time independently of what follows), since there may be a
+|const| after the parameters in declarations of member functions (rule~284); we
+need a special rule here to handle parameterless function, since the function
+name followed by empty parentheses will have been parsed as an |expression|
+rather than as a |function_head| in this case (rule~285).
 
 These rules do create another problem: while inside the declaration of a
 \&{class}~\&{example} the sequence ``\&{example}$(\,);$'' is a declaration,
-indicating the presence of a default constructor in the class, the same
-sequence is an expression standing for an explicit call of that default
-constructor in other contexts, such as ``|example x=@[example()@];|''. We
-already explained that we do not want to reduce the |function_head| to
-|expression| based on the presence of the following semicolon, so we shall try
-to demand such a reduction based on the left context. One such context is a
-binary operator as in the declaration example given or in an actual
-assignment, which is taken care of by rule~286. Usage in the arguments of
-functions or followed by operators will already be handled by rules 228--230.
-One use that has to be considered explicitly is in a |return| statement, which
-is what rule~287 below does.
+indicating the presence of a default constructor in the class, the same sequence
+is an expression standing for an explicit call of that default constructor in
+other contexts, such as ``|example x=@[example()@];|'', and it can also be a
+trivial initialisation of an |example| base class. The right context does not
+help us here, so we shall try to demand reduction of |function_head| to
+|expression| based on the left context. Such contexts can be a binary operator
+or colon as in the mentioned examples, or a comma, left parenthesis or |return|;
+rule~286 take care of these cases.
 
 Rule~288 allows member object initialisers to be specified between the
 function head of a constructor and its body; we insert a penalty before the
@@ -927,24 +963,33 @@ into account by \TeX\ at the next forced break, is usually the maximum level
 reached since the preceding forced break. But here we have descended three
 levels since our maximum inside the |function_head|, and doing an |indent|
 will reset the effective hanging indentation to two levels below that.
-Rule~289 caters for calls of
-\&{delete}[].
+Rule~289 caters for calls of~\&{delete}[].
 
 @< Rules @>=
 {280, {{int_like, parameters}},	{function_head, "!__"},only_plus_plus},	@/
-{281, {{int_like, function_head, semi},-1},
-				{function_head, "_~_"},only_plus_plus},	@/
-{282, {{int_like, function_head, statement},-1},
-				{function_head, "_~_"},only_plus_plus},	@/
-{283, {{function_head, semi}},	{declaration, NULL},only_plus_plus},	@/
+{280, {{expression, parameters}},{function_head, NULL},only_plus_plus},	@/
+{281, {{function_head, semi}},	{declaration, NULL},only_plus_plus},	@/
+{282, {{function_head, comma}},  {int_like, "__p8"},only_plus_plus},	@/
+{283, {{function_head, binop, expression}},
+				{function_head, NULL},only_plus_plus},	@/
+{283, {{function_head, binop, case_like}},
+				{function_head, NULL},only_plus_plus},	@/
+{283, {{function_head, binop, sizeof_like}},
+				{function_head, NULL},only_plus_plus},	@/
 {284, {{function_head, int_like}},
 				{function_head, "_ _"},only_plus_plus},	@/
-{285, {{int_like,expression,int_like},1},
-                                {function_head,"_ _"},only_plus_plus},	@/
+{285, {{int_like,expression,int_like}},
+                                {function_head,"_~_ _"},only_plus_plus}, @/
 {286, {{expression, binop, function_head}},
 				{expression,NULL},only_plus_plus},	@/
-{287, {{return_like, function_head}},
-				{expression,"_~_"},only_plus_plus},	@/
+{286, {{colon, function_head},1},
+				{expression,NULL},only_plus_plus},	@/
+{286, {{comma, function_head},1},
+				{expression,NULL},only_plus_plus},	@/
+{286, {{lpar, function_head},1},
+				{expression,NULL},only_plus_plus},	@/
+{286, {{return_like, function_head},1},
+				{expression,NULL},only_plus_plus},	@/
 @)
 {288, {{function_head,colon,expression,lbrace},-1},
 			{function_head,"_+p1m__-"},only_plus_plus},	@/
