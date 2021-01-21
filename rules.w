@@ -246,27 +246,33 @@ declarator.
 
 Here are the cases that start off abstract declarators (these are the first
 examples of rules that need context categories in their left hand side). As a
-visual hint to the reader we leave a little bit of white space on the spot
-where the identifier has vanished. Rules 50~and~51 handle declarators for
-pointer arguments, where the vanished identifier is preceded by an asterisk,
-which either stands at the end of the declarator, or is parenthesised (for
-function pointer arguments). In these rules there is no need to prefix the
-asterisk with `\.{\\mathord}', since the right context makes an interpretation
-as binary operator impossible. Rule~52 is added for \Cpp, in order to allow
-declarators inside angle brackets of a template argument. Rules 53~and~54
-treat declarators for arrays, possibly of pointers; there are no corresponding
-rules with |parameters| instead of |subscript| since abstract declarators
-never specify functions themselves, only function pointers. In fact the
-``function analogue'' of rule~54 would incorrectly match a cast following an
-operator like `|*|' or `|-|'. Rule~55 treats an abstract declarator consisting
-of subscripts only, which are redundantly parenthesised; here too the
-corresponding pattern with |parameters| is not only never needed, it would
-also spuriously trigger on parenthesised expressions that start with a cast.
+visual hint to the reader we leave a little bit of white space on the spot where
+the identifier has vanished. Rules 50~and~51 handle declarators for pointer
+arguments, where the vanished identifier is preceded by an asterisk, which
+either stands at the end of the declarator, or is parenthesised (for function
+pointer arguments). In these rules there is no need to prefix the asterisk with
+`\.{\\mathord}', since the right context makes an interpretation as binary
+operator impossible. In \Cpp\ one can have `|&|' instead of `|*|', which come
+for free because `|&|' is also |unorbinop|, but also `|&&|' which is a |binop|,
+so conditional on |only_plus_plus| we double the rules to handle that. Rule~52
+is added for \Cpp, in order to allow declarators inside angle brackets of a
+template argument. Rules 53~and~54 treat declarators for arrays, possibly of
+pointers; there are no corresponding rules with |parameters| instead of
+|subscript| since abstract declarators never specify functions themselves, only
+function pointers. In fact the ``function analogue'' of rule~54 would
+incorrectly match a cast following an operator like `|*|' or `|-|'. Rule~55
+treats an abstract declarator consisting of subscripts only, which are
+redundantly parenthesised; here too the corresponding pattern with |parameters|
+is not only never needed, it would also spuriously trigger on parenthesised
+expressions that start with a cast.
 
 @< Rules @>=
 {50, {{unorbinop, rpar}, -1},			{declarator, "_,"}},	@/
+{50, {{binop, rpar}, -1},	{declarator, "o_,"},only_plus_plus},	@/
 {51, {{unorbinop, comma},-1},			{declarator, "_,"}},	@/
+{51, {{binop, comma},-1},	{declarator, "o_,"},only_plus_plus},	@/
 {52, {{unorbinop, rangle},-1},	{declarator, "_,"},only_plus_plus},	@/
+{52, {{binop, rangle},-1},	{declarator, "o_,"},only_plus_plus},	@/
 {53, {{int_like, subscript},1},			{declarator, ",_"}},	@/
 {54, {{unorbinop, subscript},1},		{declarator, ",_"}},	@/
 {55, {{lpar, subscript},1},			{declarator, ",_"}},	@[@]
@@ -860,6 +866,18 @@ the elements inside the parentheses to an |expression|, which the rules for
 {266, {{int_like, int_like, colcol, int_like},1},
 				{int_like, NULL},only_plus_plus},	@/
 {266, {{int_like, int_like, colcol, case_like},1},
+				{case_like, NULL},only_plus_plus},	@/
+{266, {{return_like, expression, colcol, expression},1},
+				{expression, NULL},only_plus_plus},	@/
+{266, {{return_like, expression, colcol, int_like},1},
+				{int_like, NULL},only_plus_plus},	@/
+{266, {{return_like, expression, colcol, case_like},1},
+				{case_like, NULL},only_plus_plus},	@/
+{266, {{throw_like, expression, colcol, expression},1},
+				{expression, NULL},only_plus_plus},	@/
+{266, {{throw_like, expression, colcol, int_like},1},
+				{int_like, NULL},only_plus_plus},	@/
+{266, {{throw_like, expression, colcol, case_like},1},
 				{case_like, NULL},only_plus_plus},	@/
 {267, {{int_like, expression, colon, expression}},
 				{expression, "_~!_m__"},only_plus_plus},@[@]
