@@ -732,7 +732,7 @@ reason the category |function_head| was introduced; it used to be simply
 {225, {{function, declaration}}, {declaration, "_F_"},no_plus_plus},	@/
 {226, {{function, function}},	 {function, "_F_"},no_plus_plus},	@/
 {224, {{function}},		 {declaration, NULL},only_plus_plus},	@/
-{228, {{function_head, comma},-1}, {expression, NULL},no_plus_plus},	@/
+{228, {{function_head, comma},-1}, {expression, NULL}},			@/
 {229, {{function_head, binop},-1}, {expression, NULL},no_plus_plus},	@/
 {229, {{function_head, unorbinop},-1}, {expression, NULL},no_plus_plus},@/
 {230, {{function_head, langle},-1}, {expression, NULL}},		@/
@@ -946,15 +946,14 @@ a lone |expression| rather than |int_like|.
 
 When this is a function declaration rather than a definition, we construct the
 |declaration| explicitly from the |function_head| and the following semicolon
-(rule~281). When a comma or operator follows, we transform into |int_like| as in
-rule~33 (rule~282), respectively absorb the binary operator and following
-|expression|, |case_like| (|default|) or |sizeof_like| (|delete|) as alternative
-to rule~229 (rule~283). We absorb |int_like| from the other side into a
-|function_head| (this time independently of what follows), since there may be a
-|const| after the parameters in declarations of member functions (rule~284); we
-need a special rule here to handle parameterless function, since the function
-name followed by empty parentheses will have been parsed as an |expression|
-rather than as a |function_head| in this case (rule~285).
+(rule~281). When an operator follows, we absorb the binary operator and
+following |expression|, |case_like| (|default|) or |sizeof_like| (\&{delete}) as
+alternative to rule~229 (rule~283). We absorb |int_like| from the other side
+into a |function_head| (this time independently of what follows), since there
+may be a |const| after the parameters in declarations of member functions
+(rule~284); we need a special rule here to handle parameterless function, since
+the function name followed by empty parentheses will have been parsed as an
+|expression| rather than as a |function_head| in this case (rule~285).
 
 These rules do create another problem: while inside the declaration of a
 \&{class}~\&{example} the sequence ``\&{example}$(\,);$'' is a declaration,
@@ -964,7 +963,8 @@ other contexts, such as ``|example x=@[example()@];|'', and it can also be a
 trivial initialisation of an |example| base class. The right context does not
 help us here, so we shall try to demand reduction of |function_head| to
 |expression| based on the left context. Such contexts can be a binary operator
-or colon as in the mentioned examples, or a comma, left parenthesis or |return|;
+or colon as in the mentioned examples, or a comma, left parenthesis, question
+mark, or |return|;
 rule~286 take care of these cases.
 
 Rule~288 allows member object initialisers to be specified between the
@@ -987,7 +987,6 @@ Rule~289 caters for calls of~\&{delete}[].
 {280, {{int_like, parameters}},	{function_head, "!__"},only_plus_plus},	@/
 {280, {{expression, parameters}},{function_head, NULL},only_plus_plus},	@/
 {281, {{function_head, semi}},	{declaration, NULL},only_plus_plus},	@/
-{282, {{function_head, comma}},  {int_like, "__p8"},only_plus_plus},	@/
 {283, {{function_head, binop, expression}},
 				{function_head, NULL},only_plus_plus},	@/
 {283, {{function_head, binop, case_like}},
@@ -995,7 +994,10 @@ Rule~289 caters for calls of~\&{delete}[].
 {283, {{function_head, binop, sizeof_like}},
 				{function_head, NULL},only_plus_plus},	@/
 {284, {{function_head, int_like}},
-				{function_head, "_ _"},only_plus_plus},	@/
+				{function_head, "_~_"},only_plus_plus},	@/
+{284, {{function_head, unorbinop}},
+				{function_head, "_~_"},only_plus_plus},	@/
+{284, {{function_head, binop}},	{function_head, "_~o_"},only_plus_plus}, @/
 {285, {{int_like,expression,int_like}},
                                 {function_head,"_~_ _"},only_plus_plus}, @/
 {286, {{expression, binop, function_head}},
@@ -1005,6 +1007,8 @@ Rule~289 caters for calls of~\&{delete}[].
 {286, {{comma, function_head},1},
 				{expression,NULL},only_plus_plus},	@/
 {286, {{lpar, function_head},1},
+				{expression,NULL},only_plus_plus},	@/
+{286, {{question, function_head},1},
 				{expression,NULL},only_plus_plus},	@/
 {286, {{return_like, function_head},1},
 				{expression,NULL},only_plus_plus},	@/
