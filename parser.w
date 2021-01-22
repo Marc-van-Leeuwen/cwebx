@@ -380,7 +380,7 @@ null-terminated string provided the other pointer is null.
     { "FILE", "size_t", "ptrdiff_t", "wchar_t"
     , "jmp_buf", "sig_atomic_t", "fpos_t", "div_t", "ldiv_t"
     , "clock_t","time_t"
-    , "va_list"
+    , "va_list", @< Fixed width integral type names @>@;@;
     };
   static char* return_likes[]=
     {"break","continue","goto","return"};
@@ -420,6 +420,44 @@ null-terminated string provided the other pointer is null.
   if (C_plus_plus) @<Store reserved words for \Cpp@>
 }
 
+@ Since \Cee99 and \Cpp11, a whole range of integral types specifying the
+required number of bits is provided (as aliases for regular integral types, but
+that does not matter here because we do not want to look up and scan the system
+header files where this happens on each \me. run). Here is the complete list.
+
+@< Fixed width integral type names @>=
+"int8_t",
+"int16_t",
+"int32_t",
+"int64_t",
+"int_fast8_t",
+"int_fast16_t",
+"int_fast32_t",
+"int_fast64_t",
+"int_least8_t",
+"int_least16_t",
+"int_least32_t",
+"int_least64_t",
+"intmax_t",
+"intptr_t",
+
+"uint8_t",
+"uint16_t",
+"uint32_t",
+"uint64_t",
+"uint_fast8_t",
+"uint_fast16_t",
+"uint_fast32_t",
+"uint_fast64_t",
+"uint_least8_t",
+"uint_least16_t",
+"uint_least32_t",
+"uint_least64_t",
+"uintmax_t",
+"uintptr_t",
+
+@[@]
+
 @ One main difference between \Cee\ and \Cpp, as far as \.{\me.} is concerned,
 is that the latter has a number of additional reserved words. Most of them are
 sufficiently like some \Cee-reserved word (or category) that we can simply make
@@ -455,7 +493,8 @@ an operator (`$<$') which |sizeof| is never, so they should not cause confusion.
     "vector", "list", "deque",
     "set", "multiset", "map", "multimap",
     "stack", "queue", "priority_queue", "bitset",
-    "shared_ptr", "weak_ptr", "unique_ptr"
+    "shared_ptr", "weak_ptr", "unique_ptr",
+    "reference_wrapper"
   };
   for (i=0; i<array_size(cpp_types); ++i)
     id_lookup(cpp_types[i],NULL,type_defined);

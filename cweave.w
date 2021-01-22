@@ -1619,6 +1619,10 @@ this end we undo the effect of seeing the class name by setting
 	else if (typedef_master==4)
 	{ if(cur_id->ilk==normal||cur_id->ilk==type_defined) /* this is it */
 	    cur_id->ilk=type_defined, typedef_master=1;
+          else if(cur_id->ilk==NULL_like)
+          { @< Issue warning that we cannot set |cur_id| to |type_defined| @>
+            typedef_master=1;
+          }
 	}
 	else if (typedef_master==3) typedef_master=4;
       break;
@@ -1646,19 +1650,37 @@ this end we undo the effect of seeing the class name by setting
   @< Take action to mark identifiers following \&{class} as |type_defined| @>
 }
 
+@ When the identifier that a |typedef| wants to define already has it |ilk|
+equal to |NULL_like|, we do not set that |ilk| to |type_defined| as it is
+presumably being used as ordinary identifier, and the |typedef| could be local
+to a class or namespace. Nonetheless we print a warning about this, so that the
+user can investigate the potential name conflict. Unlike the other |typedef|
+processing, we can actually mention the identifier in question. Since this
+situation can easily arise while scanning a header file, we make the error
+message more understandable by reporting the file name if it is not the main
+file.
+
+@< Issue warning that we cannot set |cur_id| to |type_defined| @>=
+{ if (including_header_file)
+    print("While scanning header from file %s:\n",cur_file_name);
+  print("Typedef at line %d tries to define special identifier %s; ignored\n",
+        cur_line, cur_id->byte_start);
+  mark_harmless();
+}
+
 @ When we see a semicolon that terminates a |typedef| definition is seen, it
 should normally be the case that |typedef_master==1|, marking that fact that
 the (final) identifier being type-defined has in fact been seen. If this is
 not the case, then we issue a warning, since a failure to recognise the type
 definition may cause a lot of syntactical trouble later on with the identifier
-involved. Since this situation can easily arise while scanning a header file,
-we make the error message more understandable by reporting the file name if it
-is not the main file.
+involved. However we cannot mention that identifier, since it apparently slipped
+by when the |typedef_master| state was not right. Again we report the header
+file if not reading from the main input file.
 
 @< Issue a warning about an unrecognised typedef @>=
 { if (including_header_file)
-    print("In file %s:\n",cur_file_name);
-  print("\nUnrecognised typedef at line %d in section %d:\n"
+    print("While scanning header from file %s:\n",cur_file_name);
+  print("Unrecognised typedef at line %d (while in section %d)\n"
 	 @.Unrecognised typedef...@>  ,cur_line, section_count);
   mark_harmless();
 }

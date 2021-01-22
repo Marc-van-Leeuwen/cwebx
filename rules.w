@@ -684,22 +684,22 @@ risking irreducible scraps.
 
 @*2 Function definitions and external declarations. Apart from the initial
 specification of the result type (which is optional, defaulting to |int|), a
-new-style function heading will parse as an |function_head| (see the
-declaration syntax above), while an old-style function heading is an
-|expression| possibly followed by a |declaration| (specifying the function
-parameters). Rules 220--222 parse these two kinds of function headings
-together with the function body, yielding category |function|. Rule~223
-attaches the optional result type specifier. Although the \Cee~syntax requires
-that the function body is a compound statement, we allow it to be a
-|statement| (to which |compound_statement| will decay), for in case a very
-short function body is specified using `\.{\{@@;}'. In \Cpp\ the result type
-is obligatory and old-style declarations are forbidden, but on the other hand
-there are new syntactic forms such as constructors and destructors; therefore
-rules 221--223 are replaced by ones that will be given later. However the case
-of a definition of a function without parameters in \Cpp\ looks like  an
-old-style function heading with result type, so a rule for this case is used
-in place of rule~221 (the corresponding function declaration will be parsed as
-an ordinary declaration, which doesn't bother us).
+new-style function heading will parse as an |function_head| (see the declaration
+syntax above), while an old-style function heading is an |expression| possibly
+followed by a |declaration| (specifying the function parameters). Rules 220--222
+parse these two kinds of function headings together with the following semicolon
+(in case of a function declaration) or function body, yielding category
+|function|. Rule~223 attaches the optional result type specifier. Although
+the \Cee~syntax requires that the function body be a compound statement, we
+allow it to be a |statement| (to which |compound_statement| will decay), for in
+case a very short function body is specified using `\.{\{@@;}'. In \Cpp\ the
+result type is obligatory and old-style declarations are forbidden, but on the
+other hand there are new syntactic forms such as constructors and destructors;
+therefore rules 221--223 are replaced by ones that will be given later. However
+the case of a definition of a function without parameters in \Cpp\ looks like an
+old-style function heading with result type, so a rule for this case is used in
+place of rule~221 (the corresponding function declaration will be parsed as an
+ordinary declaration, which doesn't bother us).
 
 At the outer level declarations and functions can be mixed; when they do a bit
 of white space surrounds the functions (rules 224--226), except in \Cpp, where
@@ -722,6 +722,7 @@ reason the category |function_head| was introduced; it used to be simply
 
 @< Rules @>=
 {220, {{function_head, statement}}, {function, "!_f_"}},		@/
+{220, {{function_head, semi}}, {function, "!__"},no_plus_plus},		@/
 {221, {{expression, statement}}, {function, "!_f_"},no_plus_plus},	@/
 {221, {{int_like,expression, statement}},
                                  {function, "!_ _f_"},only_plus_plus},	@/
