@@ -287,18 +287,18 @@ boolean locate_file_name()
   return true;
 }
 
-@ The function |push_input_file| opens a new level of input, e.g., when a \:i
-line is found. It is used both from within the common code, namely to open
-files included by~\:i, and by a direct call from |CWEAVE|, to open files
-included by~\:h (and nested include files) during its first phase. When it is
-called, the file name is supposed to start at the first non-blank character
-from |loc|; it is delimited by either blank space, double quotes or angle
-brackets. Once the file name is located and the file is opened, any further
-input from the current line will be discarded. This function has two boolean
-parameters, the first telling whether the file to be included is a header file
-(rather than a \:i file), the second telling whether changes should be
-suspended during the file inclusion; the boolean result tells whether a file
-was actually opened.
+@ The function |push_input_file|, to be called in the line reading state left by
+|locate_file_name|, opens a new level of input, e.g., when a \:i line is found.
+It is used both from within the common code, namely to open files included
+by~\:i, and by a direct call from |CWEAVE|, to open files included by~\:h (and
+nested include files) during its first phase. When it is called, the file name
+is supposed to start at the first non-blank character from |loc|; it is
+delimited by either blank space, double quotes or angle brackets. Once the file
+name is located and the file is opened, any further input from the current line
+will be discarded. This function has two Boolean parameters, the first telling
+whether the file to be included is a header file (rather than a \:i file), the
+second telling whether changes should be suspended during the file inclusion;
+the Boolean result tells whether a file was actually opened.
 
 @c
 
@@ -345,14 +345,14 @@ boolean push_input_file(boolean header,boolean suspend)
 
 @ At initialisation time, paths may have been stored in |at_i_path| and
 |at_h_path|, that will be prefixed to given file name in an attempt to find
-include files. For a file opened in this manner |cur_file_name| will not
-contain the full path name but just the final component; this affects error
-messages and \&{\#line} directives produced while reading the file. The only
-problem that this might cause is that a debugger could be unable to locate
-a source file for code included from a \:i file; however, it is not likely
-that such a file outside the current directory will contain any code
-producing material, and good debuggers have their own means to specify a
-search path for source files.
+include files. For a file opened in this manner using the full path, the
+variable |cur_file_name| will afterwards still only contain the final component
+that was explicitly specified; this affects error messages and \&{\#line}
+directives produced while reading the file. The only problem that this might
+cause is that a debugger could be unable to locate a source file for code
+included from a \:i file; however, it is not likely that such a file outside the
+current directory will contain any code producing material, and good debuggers
+have their own means to specify a search path for source files.
 
 @< Try to open file in alternative directory... @>=
 { char name_buf[max_path_length+max_file_name_length]; int i;
@@ -495,7 +495,7 @@ local char *change_limit; /* points to the effective end of |change_buffer| */
 @ The function |prime_the_change_buffer| sets |change_buffer| in preparation
 for the next matching operation. After the change file has been completely
 input, we set |change_limit=change_buffer|, so that no further matches will
-be made; since blank lines in the change file are not used for matching, we
+be made. Since blank lines in the change file are not used for matching, we
 have |(change_limit==change_buffer && !changing)| if and only if the change
 file is exhausted (or suspended). This function is called only when
 |changing| is true; hence error messages will be reported correctly.
@@ -684,17 +684,28 @@ processed; therefore a call often takes the form of the macro |find_char|,
 which calls |get_line| if necessary, and returns whether it has succeeded
 in making |loc| point to a valid character (possibly a line-ending space).
 
-The logic of marking sections as changed, which is implemented below, is a
-bit subtle. The status of |changing| is noted for every line read, but since
-the test is made at the start of |get_line|, it actually happens just before
-the next line is read in. This means that if the first replacement line of a
-change involves the start of a new section, then the new section is marked
-as changed rather than the one before it, which is the right choice,
-assuming that sections are started at the beginning of a line. It is
-possible that |changing| is switched on and then right back off again (if
-the line after \:y starts with \:z); in that case we mark the
-current section as changed and restart |get_line|, since we still have found
-no actual line.
+The logic of marking sections as changed, which is implemented below, is a bit
+subtle. The status of |changing| is noted for every line read, but the test is
+made at the start of |get_line|, so changing status of a line is recorded just
+before the next line is read in. This means that if the first replacement line
+of a change starts a new section, then it is the new section that will is marked
+as changed rather than the one before it that was in effect when starting the
+changed line. This choice of not marking the section before as changed is
+justified in practice: even though it is possible to have a change start a new
+section in the middle of its first line, or cut off a portion of a section, this
+should not occur in normal use. It is possible that |changing| is switched on
+and then right back off again (if the line after \:y starts with \:z); in that
+case we mark the current section as changed and restart |get_line|, since we
+still have found no actual line.
+
+Apart from honouring \.{@@i} and \.{@@h} directives, |get_line| also picks up
+(and then skips) lines that start with ``\.{\#line }'', assuming they are
+produced by a code transforming program (like \.{ctanglex} itself) to indicate
+the location of the actual source for the lines that follow. It interprets such
+lines by assigning the provided values to the internal fields |line| and |name|
+of |cur_file|, which will effect possible future diagnostic messages. The main
+use of this feature is when \.{cweavex} scans via \.{@@h} header files that were
+themselves produced by running \.{ctanglex}.
 
 @c
 boolean get_line (void) /* inputs the next line */
@@ -735,7 +746,8 @@ The line number and file name simply override |cur_line| and |cur_file_name|.
     { int i=0; @+ while (&loc[i]<limit && loc[i]!='"') ++i;
       if (loc[i]=='"' && i<max_file_name_length)
       { struct f* cur_f= changing ? &change : &file[include_depth];
-        cur_f->line=line-1; /* directive applies to next line, not this one */
+        cur_f->line=line-1;
+          /* the directive describes next line, not the directive line itself */
         strncpy(cur_f->name,loc,i); cur_f->name[i]='\0';
 	goto restart;
       }
@@ -790,7 +802,7 @@ extern void check_complete (void);
 |!changing|. The only thing to test for is that there is no change line still
 waiting for a match. In order to get a decent display of the non-matching
 line, we copy it from the |change_buffer| to the |buffer|, and set some other
-variable appropriately. There is no need to restore any variables, since
+variables appropriately. There is no need to restore any variables, since
 |check_complete| is called at the very end of the run.
 
 @c
@@ -1373,12 +1385,21 @@ don't take the effort to distinguish a `full' state of the buffer from an
     /* point after last non-space character */
 }
 
-@ Except for the beginning of new sections we are not fussy about unexpected
-control sequences within module names, since we might be within `\pb';
-any problems will be eventually be detected during the output of module
-names by |CWEAVE|. So we are only looking for \:> (incidentally this
-means that control texts like those introduced by \:t are forbidden
-in module names).
+@ When finding a character |'@@'|, our main concern is to break out of the loop
+in case it is the start of \:>. We are not too fussy about unexpected control
+sequences within module names, since we might be within `\pb'; any problems will
+be eventually be detected during the output of module names by |CWEAVE|.
+However, starting a new section is forbidden, and we do test for that in order
+to catch runaway module names. We actually advance |loc| when looking at the
+next character, and store it in |c| overwriting the |'@@'|, which obliges us to
+then explicitly store |'@@'| if nothing alarming is found. That next character
+stored in |c| then gets treated and usually stored by the containing loop in the
+usual way, which therefore in this case advances by 2~characters rather than the
+usual 1. Note that this code also implicitly handles sequences~\:@@, as their
+second character will just get to (also) be stored, avoiding the scrutiny of the
+current section. Incidentally, the simple way we are looking for \:> means that
+any other kind of control texts, like those introduced by \:t, cannot be used in
+module names.
 
 @< Handle |c=='@@'|... @>=
 if (c=='@@')
@@ -1392,11 +1413,12 @@ if (c=='@@')
 
 @ The function |get_control_text| handles control texts. Like
 |get_module_name| it copies text until \:> into the |mod_text| array,
-and sets |id_first| and |id_loc| appropriately. The function returns a
-boolean value telling whether the control text was in fact empty, since that
-case sometimes needs special treatment. Always using |get_control_text|
-guarantees uniformity in the recognition of various types of control texts
-(not counting module names).
+and sets |id_first| and |id_loc| appropriately; however it does so while reducing
+\:@@ to a single character, and refusing any other control text. The function
+returns a Boolean value telling whether the control text was in fact empty,
+since that case sometimes needs special treatment. Always using
+|get_control_text| guarantees uniformity in the recognition of various types of
+control texts (other than module names).
 
 @c
 boolean get_control_text(void)
@@ -1414,12 +1436,21 @@ boolean get_control_text(void)
   return (id_loc=k)==id_first;
 }
 
-@ And here is a similar function |get_string| that is used to scan strings
-and character constants. These can contain newlines or instances of their own
-delimiters if they are protected by a backslash. We follow this convention,
-but do not allow the string to be longer than |longest_name|. The macro
-|copy_char| copies a character to |mod_text| without risking overflow; the
-|else| branch of its definition serves only to ensure that any side effect
+@ And here is a similar function |get_string| that is used to scan strings and
+character constants. In \Cee, these can contain instances of their own
+delimiters or passages to a new line, if these are protected by a backslash. We
+follow this convention, but cannot allow the string to be longer than
+|longest_name| (very long strings can still be written, by juxtaposition of
+smaller strings). Other instances of backslash are just copied together with the
+following (uninterpreted) character. An escaped passage to a new line is copied
+as such in \.{CTANGLE}, but \.{CWEAVE} removes both backslash and passage to
+a new line. The code below also takes care of catching unclosed strings (when a
+lines ends without escaping backslash) and |mod_text| overflow, and of
+reducing \:@@ to a single character so that the recorded string can be used
+as-is for \Cee\ or \TeX\ source.
+
+The macro |copy_char| copies a character to |mod_text| without risking overflow;
+the |else| branch of its definition serves only to ensure that any side effect
 of its argument is always performed.
 
 @d copy_char(c) @+ if (id_loc<mod_text_end) *id_loc++=c; @+ else (void)(c) @;
@@ -1437,11 +1468,13 @@ void get_string(void)
 		   @.String didn't end@>
     copy_char(c=*loc++);
     if (c=='\\')
-      if (loc<limit) copy_char(*loc++);
+      if (loc<limit)
+         copy_char(*loc++);
         /* record `\.\\|c|' with |c!='\n'| literally */
-      else if (get_line())
-        if (program==cweave) --id_loc; /* |CWEAVE| erases backslash */
-	else copy_char('\n'); /* but |CTANGLE| copies escaped newline */
+      else /* backslash at end of line */
+        if (get_line())
+          if (program==cweave) --id_loc; /* |CWEAVE| erases backslash */
+	  else copy_char('\n'); /* but |CTANGLE| copies escaped newline */
       else
       {@; loc=buffer;
         err_print("! Input ended in middle of string");
@@ -1454,6 +1487,7 @@ void get_string(void)
 		      @.Double @@ required...@>
   }
   while (c!=delim);
+@)
   if (id_loc>=mod_text_end)
   @/{@; print("\n! String too long: "); @.String too long@>
     term_write(mod_text+1,25); err_print("..");
@@ -1488,7 +1522,7 @@ automatically supplied, as will an initial newline if the string begins
 with~|"!"|.
 
 @c
-void err_print (char *s) /* prints `\..' and location of error message */
+void err_print (char *s) /* prints |s|, `\..', and location of error message */
 { print(*s=='!' ? "\n%s." : "%s.",s);
   if (web_file_open) @<Print error location based on input buffer@>
   update_terminal(); mark_error();
@@ -1634,7 +1668,7 @@ otherwise we add |".w"|. We prepare an alternative name |alt_web_file_name|
 by adding |"web"| after the dot. The other file names come from adding other
 things after the dot. Since there is no general agreement about the proper
 extension for \Cpp\ file names, we use a macro |CPPEXT| for it, which
-defaults to |"C"| but can be overridden by predefining this preprocessor
+defaults to |"cpp"| but can be overridden by predefining this preprocessor
 symbol when \.{common.c} is compiled.
 
 @< Make |web_file_name|... @>=

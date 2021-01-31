@@ -202,18 +202,20 @@ enum @/ @:categories@>
   if_head, /* `|if|' followed by a (parenthesised) expression */
   if_else_head, /* \lq|if @t\dots@>@; else|', \lq|while(@t\dots@>)|'
                 or \lq|switch(@t\dots@>)|' */
+  for_heading, /* parenthesised heading like |(i=0; i<n; ++i)| */
   do_head, /* `|do @t\dots@>@; while|' */
   mod_scrap, /* module name */
   declarator, /* abstract declarator, like `|(*)(int,char*[])|' */
   declaration, /* a complete declaration */
   expression, /* an expression, possibly a single identifier */
-  while_like, /* `|for|', `|while|', `|switch|' */
+  while_like, /* `|while|', `|switch|' */
+  for_like,
   do_like,
   if_like,
   else_like,
   extern_like,
 @/namespace_like, template_like, throw_like, try_like, catch_like,
-    /* each a single token */
+  using_like, /* all these a single token */
   int_like, /* `|int|', `|char|', \dots  */
   case_like, /* `|case|', `|default|' */
   sizeof_like, /* `|sizeof|', `|const|', `\&{new}', `\&{delete}' */
@@ -298,11 +300,16 @@ static array |trans_ini|, whose initialisation values we shall now give.
 { sh_sh,	binop,	yes_math, "\\SS" }, @/ @.\\SS@>
 { colon_colon,	colcol, yes_math, "\\CC" }
 
-@ For \Cpp\ we give `\.<' and `\.>' separate categories, which is necessary to
-be able to recognise template arguments.
+@ For \Cpp\ we give |&&| category |unorbinop|, so that it can be treated
+like~|&| in declarators; we also give `\.<' and `\.>' separate categories, which
+is necessary to be able to recognise template arguments.
 
-@< Fix the categories of angle brackets for \Cpp @>=
-{@; token_trans['<'].cat=langle; token_trans['>'].cat=rangle; }
+@< Fix the categories of some tokens for \Cpp @>=
+{@;
+   token_trans[and_and].cat = unorbinop;
+   token_trans['<'].cat=langle;
+   token_trans['>'].cat=rangle;
+}
 
 @ Certain tokens that lead to fixed scraps are not included in the
 |trans_ini| array because their translations involve non-character tokens.
@@ -345,10 +352,10 @@ void print_cat (int c) /* symbolic printout of a category */
   , "subscr", "struct_head", "short_{", "short_struct_head"
   , "cmp_stmt", "stmt"
   , "function", "function_head", "params", "label"
-  , "if_head", "if_else_head", "do_head"
+  , "if_head", "if_else_head", "(iter)", "do_head"
   , "mod_name", "declarator", "decl", "exp"
-  , "for", "do", "if", "else", "extern"
-  , "namespace", "template", "throw", "try", "catch,"
+  , "while", "for", "do", "if", "else", "extern"
+  , "namespace", "template", "throw", "try", "catch", "using"
   , "int", "case", "sizeof", "struct", "return"
   , "<", ">", "templ_params"
   , "#{", "#}", "insert", "@@[", "@@]"
@@ -402,7 +409,7 @@ null-terminated string provided the other pointer is null.
   id_lookup("else", NULL, else_like);
   id_lookup("enum", NULL, struct_like);
   id_lookup("extern", NULL, C_plus_plus ? extern_like : int_like);
-  id_lookup("for", NULL, while_like);
+  id_lookup("for", NULL, for_like);
   id_lookup("if", NULL, if_like);
   id_lookup("mutable", NULL, const_like);
   id_lookup("noexcept", NULL, const_like);

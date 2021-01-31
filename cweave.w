@@ -2435,7 +2435,7 @@ be given later.
     p->cat=trans_ini[i].cat; p->mathness=5*trans_ini[i].mathness;
     app_str(trans_ini[i].tr); p->trans=text_ptr; freeze_text();
   }
-  if (C_plus_plus) @< Fix the categories of angle brackets for \Cpp @>
+  if (C_plus_plus) @< Fix the categories of some tokens for \Cpp @>
   @< Install the translations of tokens involving line breaks @>
 
   o.trans=text_ptr; freeze_text(); /* empty translation */
@@ -2686,23 +2686,27 @@ text must be made inside the loop that incorporates successive `\pb'
 fragments; the space for tokens outside these fragments is tested within
 |scan_comment|.
 
-The code below used to start a comment by emitting |cancel|, making each
-comment go on the same line as the statement (or other code) that precedes it.
-This is usually what is wanted, even if in the source file the comment starts
-on a new line, but this situation made it all but impossible to make the
-comment go on a line of its own in the rare cases that this is desired; for
-instance putting \:/ or \:) before the comment made no difference, and also
-two successive comments would force themselves onto the same line. The logic
-was therefore modified to omit the |cancel| if the preceding scrap is an
-|insert|, which takes care of the mentioned cases. However, we then realised
-that |insert| scraps are the {\it only\/} way in which spacing can occur
-before a comment, since |insert| scraps are fused with the preceding
-non-|insert| scrap before the parser gets a chance at inserting formatting
-controls; such controls therefore always go {\it after\/} comments. Therefore
-the modified code removed the |cancel| in the only case where it could
-possibly have made any difference, so we might as well omit the attempt
-altogether. We have left the code but instructed the preprocessor to exclude
-it, just to document this piece of the history of our \.{\me.} program.
+The code below used to start a comment by emitting |cancel|, making each comment
+go on the same line as the statement (or other code) that precedes it. This is
+usually what is wanted, even if in the source file the comment starts on a new
+line, but this situation made it all but impossible to make the comment go on a
+line of its own in the rare cases that this was desired; for instance
+putting \:/ or \:) before the comment made no difference, and also two
+successive comments would force themselves onto the same line. The logic was
+therefore modified to omit the |cancel| if the preceding scrap is an |insert|;
+this takes care of the mentioned cases. However, we then realised that having a
+preceding |insert| scrap is the {\it only\/} way in which spacing can arise
+before a comment: comments are fused with the preceding non-|insert| scrap
+before the parser even starts the work that might insert formatting controls, so
+any such controls near the comment will always appear {\it after\/}~it.
+Therefore the code now suppressed the |cancel| in the {\it only\/} case where it
+could possibly have made any difference; so we decided to omit the attempt
+altogether. To document this piece of the history of our \.{\me.} program, we
+did not actually remove the intermediate code, but instructed the preprocessor
+to exclude it. Since the parsing rules never cause |cancel| tokens to be
+inserted and the code below does not either, one might wonder if they can ever
+arise at all; the answer is that they can as a result of explicit \:+ controls,
+whose translation has |cancel| at both ends.
 
 @< Read a comment, and convert it into a scrap @>=
 { boolean one_liner=loc[-1]=='/'; int bal=0; /* brace level in comment */

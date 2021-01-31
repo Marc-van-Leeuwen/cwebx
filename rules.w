@@ -142,21 +142,27 @@ It is not quite true that declarators always look like expressions, since the
 type modifiers `|const|' and `|volatile|' may penetrate into declarators. When
 they do they will almost always be preceded by an asterisk, and rule~34 will
 treat such cases. The choice for |int_like| as the result category is not
-completely obvious, since it makes the modifier and the preceding asterisk
-part of the type specifier rather than of the declarator, which strictly
-speaking is not correct; the choice for |unop| or |unorbinop| might therefore
-seem a more logical one. One reason for not doing that is that a space would
-have to be inserted into the translation after the modifier scrap, which would
-not look right in abstract declarators for contrived cases like \hbox{|int
-f(char *const)@;|}; more importantly, if the modifier would become part of the
-declarator, it would be a (reserved) identifier that precedes the identifier
-actually being declared, and when the declarator then receives a call from
-|make_underlined| by rule 31~or~33, it would mislead |first_ident|. The
-current solution has a small flaw as well, since it cannot handle the
-situation where the modifier is separated from the type specifier by a
-parenthesis, as in $\&{void}~(\m*\&{const}~\m*f)~(\&{int})$; apart from the
-|make_underlined| problem, such rare cases are hard to handle without causing
-trouble in other situations, so we do not attempt to handle them.
+completely obvious, since it makes the modifier and the preceding asterisk part
+of the type specifier rather than of the declarator, which strictly speaking is
+not correct; the choice for resulting category |unop| or |unorbinop| might
+therefore seem a more logical one. One reason for not doing that is that a space
+would have to be inserted into the translation after the modifier scrap to
+separate it from a following identifier in cases like |int *const n;| (since
+rule~14 provides no such space); but such a space would look wrong if no
+identifier follows, as happens in abstract declarators for contrived cases
+like \hbox{|int f(char *const)@;|}. More importantly, if the modifier would
+become part of the declarator, it would be a (reserved) identifier that precedes
+the identifier actually being declared, and when the complete declarator then
+receives a call from |make_underlined| by rule 31~or~33, this presence would
+mislead |first_ident| to find the modifier rather than to the identifier. By
+instead joining the asterisk and modifier as |int_like| with the preceding type
+specifier (by rule~30), these complications are avoided. Nonetheless the current
+solution has a small flaw as well, since it cannot handle the situation where
+the modifier is separated from the preceding type specifier by a left
+parenthesis, as in \hbox{|void@[(*const*f)@](int)@;|}, but in that case the
+advice given above to always enclose by `\.{@@[}' and `\.{@@]}' the parentheses
+around a declared function pointer name (here those containing |*const*f|) will
+save the day.
 
 @< Rules @>=
 {30, {{int_like, int_like}},		   {int_like, "_~_"}},	@/
@@ -448,20 +454,18 @@ line breaks.
 {114, {{short_struct_head, rbrace}}, {int_like, "_-B_"}},		@[@]
 
 
-@*2 Statements.
-Rule~120 gives the usual way statements are formed, while rule~121 handles the
-anomalous case of an empty statement. Its use can always be avoided by using
-an empty pair of braces instead, which much more visibly indicates the
-absence of a statement (e.g., an empty loop body); when the empty statement
-is used however, it will either be preceded by a space or start a new line
-(like any other statement), so there is always some distinction between a
-|while| loop with empty body and the |while| that ends a |do|~statement. A
-rule like this with left hand side of length~1 makes the corresponding
-category (viz.~|semi|) ``unstable'', and can only be useful for categories
-that usually are scooped up (mostly from the left) by a longer rule.  Rules
-122--124 make labels (ordinary, case and default), and rules 125~and~126 attach
-the labels to statements. Rule~127 makes \:; behave like an invisible
-semicolon when it does not match any of the rules designed for it, for
+@*2 Statements. Rule~120 gives the usual way statements are formed, while
+rule~121 handles the anomalous case of an empty statement. In fact we feel that
+using an empty pair of braces is a more explicit way to represent the absence
+any action (e.g., an empty loop body), but when using just a semicolon as a
+statement, it will at least never follow the preceding text without any space,
+hopefully avoiding confusion with other uses of the semicolon. A rule like 121
+with left hand side of length~1 makes the corresponding category (viz.~|semi|)
+``radioactively unstable'' in that it can decay on its own, and can only be
+useful for categories that usually are scooped up (mostly from the left) by a
+longer rule. Rules 122--124 make labels (ordinary, case and default), and rules
+125~and~126 attach the labels to statements. Rule~127 makes \:; behave like an
+invisible semicolon when it does not match any of the rules designed for it, for
 instance if it follows an expression.
 
 @< Rules @>=
@@ -476,25 +480,26 @@ instance if it follows an expression.
 {127, {{magic}},				{semi, NULL}},		@[@]
 
 @ The following rules format compound statements and aggregate initialisers.
-Rules 130--134 combine declarations and statements within compound statements.
-A newline is forced between declarations by rule~130, unless the declarations
-are local (preceded by a left brace) and `\.{+m}' was specified (rule~131);
-this rule does not apply to structure specifiers, because the left brace
-will already have been captured in a |struct_head| before the rule can match.
-If `\.{+f}'~or~`\.{+a}' was specified, then a newline is forced between
-statements as well (rule~133). Between the declarations and statements some
-extra white space appears in ordinary \Cee\ (rule~132), but not in \Cpp, where
-declarations and statements may be arbitrarily mixed (rule~134).  Rules
-135--137 then build compound statements, where the last case is the unusual
-one where a compound statement ends with a declaration; empty compound
-statements are made into simple statements so that they will look better
-when used in a loop statement or after a label. If compound statements are
-not engulfed by a conditional or loop statement (see below) then they decay
-to ordinary statements by rule~138. Rules 139~and~140 reduce aggregate
-initialiser expressions, where the reduction of comma-separated lists of
-expressions is already handled by the expression syntax. Rule~141 handles
-constructor calls in \Cpp\ using the new syntax (uniform initialisation)
-with braces replacing parentheses around the arguments (possibly around none).
+Rules 130--134 combine declarations and statements within compound statements. A
+newline is forced between declarations by rule~130, unless the declarations are
+local (preceded by a left brace) and the flag `\.{+m}' was specified on the
+command line (rule~131). This rule does not apply inside structure or class
+specifiers (where different member should not be gathered on a same line),
+because the left brace will already have been captured in a |struct_head| before
+the rule can match. If `\.{+f}'~or~`\.{+a}' was specified, then a newline is
+forced between statements as well (rule~133). Between the declarations and
+statements some extra white space appears in ordinary \Cee\ (rule~132), but not
+in \Cpp, where declarations and statements may be arbitrarily mixed (rule~134).
+Rules 135--137 then build compound statements, where the last case is the
+unusual one where a compound statement ends with a declaration; empty compound
+statements are made into simple statements so that they will look better when
+used in a loop statement or after a label. If compound statements are not
+engulfed by a conditional or loop statement (see below) then they decay to
+ordinary statements by rule~138. Rules 139~and~140 reduce aggregate initialiser
+expressions, where the reduction of comma-separated lists of expressions is
+already handled by the expression syntax. Rule~141 handles constructor calls
+in \Cpp\ using the new syntax (uniform initialisation) with braces replacing
+parentheses around the arguments (possibly around none).
 
 @< Rules @>=
 {130, {{declaration, declaration}}, {declaration, "_f_"}},		@/
@@ -609,18 +614,22 @@ that occur within a one-line compound statement.
 {172, {{short_lbrace, if_head, statement}},
 		{short_lbrace, "_B_B_"}},			@[@]
 
-@ Switch and loop statements make use of the syntax for conditionals by
-reducing to |if_else_head| which will take one further statement and indent it
-(rules 180, and rule~181 which avoids a break before a loop at the beginning
-of a compound statement in the |standard_braces| style). Recall that `|for|'
-and `|switch|' are both |while_like|; the parenthesised object following
-`|for|' looks like nothing we have seen before, however, so we need extra
-rules to come to terms with it (rules 182--184). Rule~182 is needed to avoid a
-line break when these are normally inserted between statements, and rule~184
-is needed in case the third expression is empty. For \Cpp\ one needs rule~185
-that is similar to rule~182, but this time to preempt the line break that
-would otherwise be inserted by rule~132 in case of a |for| loop declaring the
-loop variable.
+@ Switch and loop statements make use of the syntax for conditionals by reducing
+to |if_else_head| which will take one further statement and indent it (rules
+180, and rule~181 which avoids a break before a loop at the beginning of a
+compound statement in the |standard_braces| style). Recall `|for|' has a
+separate category, but `|switch|' is |while_like| since both expect to be
+followed by a single parenthesised expression. The parenthesised object
+following `|for|' looks like nothing we have seen before, and are handled by
+rules 182--184. Rule~182 is needed to avoid a line break when these are normally
+inserted between statements, if not the normal combination of statements will
+usually combine the first two items after |for| to one (indeed this would allow
+there to be 2, 4, or more items present, though of course the compiler would not
+like that). Rule~183 combines with the final (third) expression, while
+rule~184 is needed in case that third expression
+is empty. For \Cpp\ one needs rule~185, which is similar to rule~182 but starts
+with a declaration (of a loop variable), to preempt the line break that would
+otherwise be inserted by rule~132.
 
 The |do|-|while| loops have to be treated separately. Because we want to
 distinguish the case of a loop body that is a |compound_statement| from other
@@ -629,8 +638,23 @@ control condition to an |if_else_head|, since by then a |compound_statement|
 will have decayed to |statement|. Hence we pick up the unreduced `|while|'
 token and form a new category |do_head| (rules 186~and~187); in case of a
 compound statement the `|while|' will be on the same line as the closing
-brace. Rules 188~and~189 then combine this with the condition and the
+brace. Rule 188 then combines this with the condition and the
 ridiculous mandatory semicolon at the end to form a |statement|.
+
+Rules~190--191 take care of reducing the part between parentheses to
+|for_heading| in the case of range-based for loops. Here that part looks like an
+identifier declaration with an initialisation expression that is preceded by a
+colon rather that an equals sign. A major worry here is that rule~122 wants to
+reduce the identifier and colon to |label|, and using the right context to
+preempt that is difficult since the initialisation expression could start with
+various categories (like |expression| or |lpar| or even |int_like|) before it
+has had the time to reduce to |expression|. So we use just left context to
+preempt rule~122, but that forces us to do a partial reduction to something
+artificial; we decide to actually do the reduction to |label| but with the
+formatting appropriate for a range-based |for| loop heading (rule~190), and then
+(after reducing the initialisation expression) pick up the pieces so formed to
+finally reduce to |for_heading| (rule~191). In the end the only reason rule~190
+needs to be present at all is to force the colon to be processed in math mode.
 
 @< Rules @>=
 {180, {{while_like, expression}}, {if_else_head, "f_~_"}},		@/
@@ -638,8 +662,11 @@ ridiculous mandatory semicolon at the end to form a |statement|.
 			{if_else_head, "_~_"},standard_braces},		@/
 {182, {{lpar, statement, statement}, 1},
 			{statement, "_B_"}, forced_statements},		@/
-{183, {{lpar, statement, expression, rpar}},	{expression, "__B__"}},	@/
-{184, {{lpar, statement, rpar}},	{expression, NULL}},		@/
+{183, {{lpar, statement, expression, rpar}}, {for_heading, "__B__"}},	@/
+{183, {{lpar, statement, rpar}}, {for_heading, NULL}},			@/
+{184, {{for_like, for_heading}}, {if_else_head, "f_~_"}},		@/
+{184, {{lbrace,for_like,for_heading},1},
+			{if_else_head, "_~_"},standard_braces},		@/
 {185, {{lpar, declaration, statement}, 1},
 			{statement, "_B_"}, only_plus_plus},		@/
 {186, {{do_like, compound_statement, while_like}},
@@ -653,11 +680,16 @@ ridiculous mandatory semicolon at the end to form a |statement|.
 {187, {{do_like, statement, while_like}},
 			{do_head, "_+f_-f_"},all_stats_forced},		@/
 {188, {{do_head, expression, semi}}, {statement, "f_~__f"}},		@/
-{189, {{lbrace, do_head, expression, semi},1}, {statement, "_~__f"}},	@[@]
+{188, {{lbrace, do_head, expression, semi},1},
+				{statement, "_~__f"},standard_braces},	@/
+{190, {{lpar,int_like, expression, colon},2},
+			{label, "!_m_"},only_plus_plus},		@/
+{191, {{lpar,int_like, label, expression,rpar}},
+			{for_heading, "__~___"},only_plus_plus},	@[@]
 
 @ The following rules prevent forced line breaks from loop statements
 that occur within a one-line compound statement. Since no special layout is
-required between the heading of a |while| loop and its body, rule~200
+required between the heading of a |while| or |for| loop and its body, rule~200
 incorporates the heading as if it were a separate statement. For a
 |do|-|while| loop we must take a bit more effort to get the spacing
 following the |while| correct.
@@ -665,6 +697,8 @@ following the |while| correct.
 @< Rules @>=
 {200, {{short_lbrace, while_like, expression}},
 					{short_lbrace, "_B_~_"}},	@/
+{200, {{short_lbrace, for_like, for_heading}},
+			{short_lbrace, "_B_~_"},standard_braces},	@/
 {201, {{short_lbrace, do_like, statement, while_like},1},
 					{do_head, "_B_B_"}},		@/
 {202, {{short_lbrace, do_head, expression, semi}},
@@ -840,9 +874,7 @@ class identifier at the right; the resulting category is that of the right
 hand side. However, we must make sure that the contraction of |int_like|
 scraps (rule~30) does not absorb a class name used before `::' into a possibly
 preceding type name; therefore rule~266 doubles rule~265 in case of a preceding
-|int_like| scrap. Rule~267 takes care of range-based for loops by contracting
-the elements inside the parentheses to an |expression|, which the rules for
-|for| loops will then take care of.
+|int_like| scrap.
 
 @< Rules @>=
 {260, {{case_like, binop}},	{expression, "_o{_}"},only_plus_plus},	@/
@@ -879,9 +911,7 @@ the elements inside the parentheses to an |expression|, which the rules for
 {266, {{throw_like, expression, colcol, int_like},1},
 				{int_like, NULL},only_plus_plus},	@/
 {266, {{throw_like, expression, colcol, case_like},1},
-				{case_like, NULL},only_plus_plus},	@/
-{267, {{int_like, expression, colon, expression}},
-				{expression, "_~!_m__"},only_plus_plus},@[@]
+				{case_like, NULL},only_plus_plus},	@[@]
 
 @ Type identifiers may appear as the left hand side of an assignment within a
 list of formal parameters, indicating a default argument; in this case the
@@ -997,10 +1027,11 @@ Rule~289 caters for calls of~\&{delete}[].
 {284, {{function_head, int_like}},
 				{function_head, "_~_"},only_plus_plus},	@/
 {284, {{function_head, unorbinop}},
-				{function_head, "_~_"},only_plus_plus},	@/
-{284, {{function_head, binop}},	{function_head, "_~o_"},only_plus_plus}, @/
-{285, {{int_like,expression,int_like}},
-                                {function_head,"_~_ _"},only_plus_plus}, @/
+				{function_head, "_~o_"},only_plus_plus}, @/
+{285, {{int_like, expression, int_like}},
+                                {function_head,"_~_~_"},only_plus_plus}, @/
+{285, {{int_like, expression, unorbinop}},
+				{function_head, "_~_~o_"},only_plus_plus}, @/
 {286, {{expression, binop, function_head}},
 				{expression,NULL},only_plus_plus},	@/
 {286, {{colon, function_head},1},
