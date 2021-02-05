@@ -161,7 +161,7 @@ solution has a small flaw as well, since it cannot handle the situation where
 the modifier is separated from the preceding type specifier by a left
 parenthesis, as in \hbox{|void@[(*const*f)@](int)@;|}, but in that case the
 advice given above to always enclose by `\.{@@[}' and `\.{@@]}' the parentheses
-around a declared function pointer name (here those containing |*const*f|) will
+around a declared function pointer name (here those containing |*const*f@;|) will
 save the day.
 
 @< Rules @>=
@@ -228,7 +228,8 @@ what should follow it into a |declaration|, which is appropriate.
 {45, {{namespace_like,expression}},
                                {function_head, "_~_"},only_plus_plus},  @/
 {46, {{namespace_like,lbrace},-1},{function_head,NULL},only_plus_plus}, @/
-{47, {{int_like,namespace_like}},{int_like,"_~_"},only_plus_plus},      @[@]
+{47, {{int_like,namespace_like}},{int_like,"_~_"},only_plus_plus},      @/
+{47, {{using_like,namespace_like}},{int_like,"_~_"},only_plus_plus},    @[@]
 
 @ Abstract declarators are used after type specifiers in casts and for
 specifying the argument types in declarations of functions or function
@@ -318,7 +319,11 @@ using the operator~'|<|'. The result will then combine with the preceding
 template class identifier by rule~81, or with the preceding ordinary
 identifier by rule~82. Rule~83 aims to preempt application of rule~30 when
 template arguments hide the right context that would otherwise preempt it; it
-combines application of rules 79~and~81.
+combines application of rules 79~and~81. Rule~85 deals with declarations of type
+names with \&{using} instead of |typedef|,
+like  \&{using}~\&{iter}~=~\&{typename} \&T::\&{iterator}, while rule~86 deals
+with simple uses of \&{using} to lift individual qualified names into the
+current scope.
 
 @< Rules @>=
 {70, {{lpar, int_like, declarator, comma}}, {lpar, "____p5"}},		@/
@@ -342,22 +347,32 @@ combines application of rules 79~and~81.
 {81, {{int_like,templ_params}},{int_like, NULL},only_plus_plus},	@/
 {82, {{expression,templ_params}},{expression, NULL},only_plus_plus},	@/
 {83, {{int_like,int_like, langle, expression, rangle},1},
-			{int_like, "_a__a_"},only_plus_plus},		@[@]
+			{int_like, "_a__a_"},only_plus_plus},		@/
+{85, {{using_like, int_like, binop,int_like,semi}},
+			{declaration, "_~____"},only_plus_plus},	@/
+{86, {{using_like, expression, semi}},
+			{declaration, "_~__"},only_plus_plus},		@/
+{86, {{using_like, int_like, semi}},
+			{declaration, "_~__"},only_plus_plus},		@[@]
 
 @*2 Structure, union, and enumeration specifiers. It is permissible to use
 typedef identifiers as structure, union, or enumeration tags as well, so we
-include cases where an |int_like| follows a |struct_like| token. Rule~94
-allows using |struct s| in place of a type identifier, but in \Cpp\ this is
-never useful, and such a rule would preempt rule~92 in definitions of derived
-classes (where the left brace is not immediately in view), so we exclude the
-rule there. However, we may expect to find something like `\&{class C};' as a
-pre-declaration in \Cpp, so for that case we replace rule~94 by one which will
-recognise such declarations. Another difference in \Cpp\ is that one can find
-|function| in a class specifier (rule~96) and also things like `\&{private}:';
-the latter are parsed just like `|default:|', i.e., as a |label| (rule~98).
-Rule~97 is added to allow completely empty structures or classes, which
-appears to amuse mostly the users of \Cpp\ (they can now overload functions
-with dummy arguments that have a distinguished type), but they are allowed in
+include cases where an |int_like| follows a |struct_like| token. Rule~94 allows
+using |struct s| in place of a type identifier, but in \Cpp\ this is never
+useful, and such a rule would preempt rule~92 in definitions of derived classes
+(where the left brace is not immediately in view), so we exclude the rule there.
+However, since \&{typename} is |struct_like|, we do want to reduce that sequence
+of categories to |int_like| in something like
+ \&{using}~\&{iter}~=~\&{typename} \&T::\&{iterator}, and there can also be
+something like `\&{class C};' as a class pre-declaration in \Cpp, in which case
+we pick up the tokens including the semicolon to form a |declaration|; two rules
+therefore replace rule~94 for \Cpp. Another difference in \Cpp\ is that one can
+find |function| in a class specifier (rule~96) and also things like
+`\&{private}:'; the latter are parsed just like `|default:|', i.e., as a |label|
+(rule~98). Rule~97 is added to allow completely empty structures or classes,
+which appears to amuse mostly the users of \Cpp\ (they can now overload
+functions with dummy arguments that have a distinguished type), but they are
+allowed in
 \Cee\ as well.
 
 @< Rules @>=
@@ -372,22 +387,19 @@ with dummy arguments that have a distinguished type), but they are allowed in
 		{struct_head, "_~!_f_"},wide_braces},			@/
 {92, {{struct_like, int_like, lbrace}},
 	{struct_head, "_~!$_ft_"},standard_braces|no_plus_plus},	@/
-@q $ emacs-cookie @>
 {92, {{struct_like, int_like, lbrace}},
 	{struct_head, "_~!_ft_"},standard_braces|only_plus_plus},	@/
 {92, {{struct_like, int_like, lbrace}},
 	{struct_head, "_~!$_~_"},unaligned_braces|no_plus_plus},	@/
-@q $ emacs-cookie @>
 {92, {{struct_like, int_like, lbrace}},
 	{struct_head, "_~!_~_"},unaligned_braces|only_plus_plus},	@/
 {92, {{struct_like, int_like, lbrace}},
 	{struct_head, "_~!$_f_"},wide_braces|no_plus_plus},		@/
-@q $ emacs-cookie @>
 {92, {{struct_like, int_like, lbrace}},
 	{struct_head, "_~!_f_"},wide_braces|only_plus_plus},		@/
 {93, {{struct_like, expression}}, {int_like, "_~_"}},			@/
 {94, {{struct_like, int_like}}, {int_like, "_~$_"},no_plus_plus},	@/
-@q $ emacs-cookie @>
+{94, {{binop,struct_like, int_like},1}, {int_like, "_~_"},only_plus_plus}, @/
 {94, {{struct_like, int_like, semi}},
 				{declaration, "_~!__"},only_plus_plus},	@/
 {95, {{struct_head, declaration, rbrace}},
