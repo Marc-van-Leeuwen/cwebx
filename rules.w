@@ -320,8 +320,8 @@ template class identifier by rule~81, or with the preceding ordinary
 identifier by rule~82. Rule~83 aims to preempt application of rule~30 when
 template arguments hide the right context that would otherwise preempt it; it
 combines application of rules 79~and~81. Rule~85 deals with declarations of type
-names with \&{using} instead of |typedef|,
-like  \&{using}~\&{iter}~=~\&{typename} \&T::\&{iterator}, while rule~86 deals
+names with \&{using} instead of |typedef|, like
+\&{using}~\&{iter}~=~\&{typename} \&T::\&{iterator}, while rule~86 deals
 with simple uses of \&{using} to lift individual qualified names into the
 current scope.
 

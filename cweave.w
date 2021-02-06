@@ -12,6 +12,7 @@
 % CWEBx 3.06, Marc van Leeuwen, December 2005
 % CWEBx 3.1, Marc van Leeuwen, May 2006
 % CWEBx 3.5, Marc van Leeuwen, June 2009
+% CWEBx 3.6, Marc van Leeuwen, 2021
 
 % Copyright (C) 1987,1990 Silvio Levy and Donald E. Knuth
 % Copyright 1994-2009 Marc A. A. van Leeuwen
@@ -1557,17 +1558,20 @@ In \Cpp\ there is an extra complication due to template parameters. Between
 the angle brackets `\.<' and `\.>' we should suspend our search for the
 identifier being defined, just like we do between braces, and such brackets
 can be nested. We shall use the same counter as for braces to handle angle
-brackets for \Cpp.
+brackets for \Cpp. Also \Cpp\ provides ways to make an identifier |type_defined|
+without using |typedef|; these will also be taken into account below.
 
 Fortunately |typedef| declarations cannot be nested inside each other,
-so we can use global variables to keep the proper counts. Three integer
+so we can use static variables to keep the proper counts. Three integer
 counters are used, two for the nesting levels of braces and parentheses,
 which are set to~0 whenever a |typedef| is scanned and properly maintained
 thereafter, and a master counter which determines if we are
 paying attention at all. The latter counter |typedef_master| will sometimes be
 temporarily lowered to a negative value to suspend any action until it is raised
 to it old value again; the sections in question start with
-|typedef_tracking(false)| and end with |typedef_tracking(true)|.
+|typedef_tracking(false)| and end with |typedef_tracking(true)|. Because of this
+need for outside control, these variables are declared at the compilation unit
+level rather than locally in the code below.
 
 @d typedef_tracking(b) (typedef_master += b ? 5 : -5) /* raise or lower by 5 */
 
@@ -1576,23 +1580,38 @@ local int typedef_master=-5; /* tracking disabled outside \Cee~parts */
 local int brace_level, par_level;
 
 @ The master counter is ordinarily equal to~0 when tracking is enabled, and
-negative if it is disabled. When it is~0 and a |typedef| is seen, it is raised
-to~2, after which an |int_like| or |type_defined| identifier will further
-raise it to~4, indicating that any |normal| identifier coming along at the
-same brace level will be made |type_defined|. When that happens the master
-counter drops to~1, indicating that it can still be rekindled by a comma at
-the proper parenthesis level. We must be prepared to see more than one typedef
-for the same identifier, as we may have scanned a header file before seeing
-the source that produced that file, so we also let the master counter drop
-to~1 if it was~4 and an identifier that is already |type_defined| is seen. If
-however following the |typedef|, when the master counter is~2, a |struct_like|
-identifier is seen, the master counter is raised only to~3, so that a
-following identifier will not be made |type_defined|, but rather pass the
-honour on by setting the master counter to~4; this also happens when instead
-of an identifier a left brace is seen. Finally, a semicolon at the right brace
-level will return a positive value of the master counter to~$0$; if the master
-counter is not~1 at this point no identifier has been marked, and the user is
-warned.
+negative if it is disabled. When it is~0 and a |typedef| is seen, it will be
+raised to strictly positive values strictly until the terminating semicolon is
+found. The handling of \Cpp-specific cases is also invoked here, independently
+of |typedef_master|.
+
+@< Keep track of tokens relevant to |typedef| declarations @>=
+{ if (typedef_master==0 &&
+      next_control==identifier && cur_id->ilk==typedef_like)
+  @/{@; typedef_master=2; brace_level=par_level=0; }
+  else if (typedef_master>0)
+    @< Switch on |next_control| to track progress of |typedef| statement @>
+  if (C_plus_plus)
+    @< Mark identifiers as |type_defined| following keywords like \&{class}
+       or \&{using} @>
+}
+
+@ After seeing |typedef| the code above initially raises |typedef_master| to~2.
+when an identifier follows that is |int_like| or |type_defined|, this will
+further raise it to~4, indicating that any |normal| identifier coming along at
+the same brace level will be made |type_defined|. After that is done
+|typedef_master| is lowered to~1, indicating that it can still be rekindled by a
+comma at the proper parenthesis level. We must be prepared to see more than one
+typedef for the same identifier, as we may have scanned a header file before
+seeing the source that produced that file; we therefore also lower
+|typedef_master| to~1 if an identifier that is already |type_defined| is seen
+while |typedef_master==4|. If however a |struct_like| identifier is seen while
+|typedef_master==2|, we raise |typedef_master| only to~3, so that a following
+identifier will not be made |type_defined|, but rather pass the honour on by
+setting |typedef_master=4|; this also happens when instead of an identifier a
+left brace is seen. Finally, a semicolon at the right brace level will return a
+positive value of |typedef_master| to~$0$; we expect to see |typedef_master==1| the master counter is not~1 at
+this point no identifier has been marked, and the user is warned.
 
 In \Cpp\ we must track angle brackets, as said above, but there is one more
 complication. In a typedef definition like
@@ -1604,50 +1623,44 @@ class name
 this end we undo the effect of seeing the class name by setting
 |typedef_master| back to the level~$2$ when the |colon_colon| is seen.
 
-@< Keep track of tokens relevant to |typedef| declarations @>=
-{ if (typedef_master==0 &&
-      next_control==identifier && cur_id->ilk==typedef_like)
-  @/{@; typedef_master=2; brace_level=par_level=0; }
-  else if (typedef_master>0) switch(next_control)
-  { case identifier:
-      if (brace_level==0)
-	if (typedef_master==2)
-	{ if (cur_id->ilk==int_like || cur_id->ilk==type_defined)
-	    typedef_master=4;
-	  else if (cur_id->ilk==struct_like) typedef_master=3;
-	}
-	else if (typedef_master==4)
-	{ if(cur_id->ilk==normal||cur_id->ilk==type_defined) /* this is it */
-	    cur_id->ilk=type_defined, typedef_master=1;
-          else if(cur_id->ilk==NULL_like)
-          { @< Issue warning that we cannot set |cur_id| to |type_defined| @>
-            typedef_master=1;
-          }
-	}
-	else if (typedef_master==3) typedef_master=4;
-      break;
-    case '{': @+
-      if (brace_level++==0 && typedef_master==3) typedef_master=4; @+ break;
-    case '}': --brace_level; break;
-    case '<': @+ if (C_plus_plus) brace_level++; @+ break;
-    case '>': @+ if (C_plus_plus) --brace_level; @+ break;
-    case ',': @+
-      if (typedef_master==1 && par_level==0) typedef_master=4; @+ break;
-    case '(': ++par_level; break;
-    case ')': --par_level; break;
-    case ';': @+
-      if (brace_level==0)
-      { if (typedef_master>=2)
-          @< Issue a warning about an unrecognised typedef @>
-        typedef_master=0;
-      } @+
-      break;
-    case colon_colon:
-       @+ if (C_plus_plus && brace_level==0 && typedef_master==4)
-       typedef_master=2; @+ break;
-  }
-  if (C_plus_plus)
-  @< Take action to mark identifiers following \&{class} as |type_defined| @>
+@< Switch on |next_control| to track progress of |typedef| statement @>=
+switch(next_control)
+{ case identifier:
+    if (brace_level==0)
+      if (typedef_master==2)
+      { if (cur_id->ilk==int_like || cur_id->ilk==type_defined)
+          typedef_master=4;
+        else if (cur_id->ilk==struct_like) typedef_master=3;
+      }
+      else if (typedef_master==4)
+      { if(cur_id->ilk==normal||cur_id->ilk==type_defined) /* this is it */
+          cur_id->ilk=type_defined, typedef_master=1;
+        else if(cur_id->ilk==NULL_like)
+        { @< Issue warning that we cannot set |cur_id| to |type_defined| @>
+          typedef_master=1;
+        }
+      }
+      else if (typedef_master==3) typedef_master=4;
+    break;
+  case '{': @+
+    if (brace_level++==0 && typedef_master==3) typedef_master=4; @+ break;
+  case '}': --brace_level; break;
+  case '<': @+ if (C_plus_plus) brace_level++; @+ break;
+  case '>': @+ if (C_plus_plus) --brace_level; @+ break;
+  case ',': @+
+    if (typedef_master==1 && par_level==0) typedef_master=4; @+ break;
+  case '(': ++par_level; break;
+  case ')': --par_level; break;
+  case ';': @+
+    if (brace_level==0)
+    { if (typedef_master>=2)
+        @< Issue a warning about an unrecognised typedef @>
+      typedef_master=0;
+    } @+
+    break;
+  case colon_colon:
+     @+ if (C_plus_plus && brace_level==0 && typedef_master==4)
+     typedef_master=2; @+ break;
 }
 
 @ When the identifier that a |typedef| wants to define already has it |ilk|
@@ -1688,47 +1701,51 @@ file if not reading from the main input file.
 @ In \Cpp, any identifier that follows \&{class} (or |struct|, |union|, or
 |enum|) is considered as a typedef identifier, i.e., every time some
 \&{class~x} is encountered, an implicit `|typedef| \&{class~x~x}' is assumed.
+Similarly one can see \&{class~C} or \&{typename T} in a template header, and in
+these cases we also make the second identifier |type_defined|; even though the
+scope here is just the template definition, \me. does not have the means to
+determine its extent, so the |type_defined| status will stick and the programmer
+should just refrain from using the same identifier as a non-type elsewhere.
+Finally \Cpp\ has alias-declarations as an alternative to using |typedef|,
+which take a form like \&{using}~\&{iter}~=~\&{List}::\&{iterator};
+for this reason we treat |using_like| much like |struct_like| (which is it |ilk|
+of both \&{class} and \&{typename} in the code below.
+
 Since (except in contrived examples) the identifier is the one immediately
-following the |class| keyword, we can use a static two-state variable to
-signal that an implicit type definition is pending.
+following the |struct_like| or |using_like| keyword, using a static flag
+|class_seen| raised by the keyword to signal that an implicit type definition is
+pending could suffice. However not all identifiers immediately following
+keywords \&{typename} and \&{using} should be made |type_defined|. One may
+use \&{typename} inside template definitions to indicate that certain qualified
+names dependent on a template parameter in fact denote types.
+Similarly \&{using} can introduce a using-declaration (followed by a qualified
+name) as in \&{using}~|std|::|swap|. In both case the first element of the
+qualified name should not be made |type_defined|. (We need not worry about
+using-directives, as in \&{using~namespace}, there is no |normal| identifier to
+consider at all). As in both cases to be disabled qualified names are involved,
+we look ahead one more toke and do nothing if it is |colon_colon|. To this end
+we add two more states to our state variable |class_seen|, passing through
+states 2 and 3 when seeing the keyword and then a |normal| identifier, and
+setting |cur_id->ilk=type_defined| if in state~3 a token follows that signals a
+case where \&{typename} or \&{using} do define the following identifier as a
+type, namely a comma or closing angle bracket (for \&{typename}) or an equals
+sign (for \&{using}). Since none of these tokens are identifiers, scanning them
+will have left |cur_id| unchanged, so it still refers to the identifier that was
+affected by the definition.
 
-There is a problem with the keyword \&{typename} though. If it occurs to
-introduce a template parameter, then that template parameter should be
-interpreted as type so that the template body can be properly parsed; this is
-what would normally happen, just like when one would write \&{class} instead
-of \&{typename}. If however it occurs to force the following expression to be
-interpreted as a type name, then that expression will probably involve some
-namespace resolution, and we do not want to do anything to the {\it first\/}
-identifier in that expression (if it is template parameter or a class name
-then it has category |int_like| already, but it could be a namespace
-identifier as in \&{typename}~$\\{std}\CC\&{vector}\ang<\&T\ang>
-\CC\&{iterator}~p$, and we do not want to make \\{std} a type name!
-Unfortunately the only way to tell these two uses of \&{typename} apart during
-phase~I is to look ahead one more token, which means we must add two more
-states to our state variable. Upon seeing \&{class} we move to state~$1$ which
-will simply make the next token |type_defined| if it is an identifier. Upon
-seeing \&{typename} we move to state~$2$, and a successive identifier advances
-to state~$3$ while storing its identity in another static variable |this_id|,
-then if the following token (in state~$3$) is {\it not\/} the namespace
-resolution operation |colon_colon|, then the saved identifier will be made
-|type_defined|.
+Should the logic below fail, and some \&{typename} or \&{using} make the
+identifier following it |type_defined| when it shouldn't, then the literate
+programmer can as a last resort interject a \:\v or \:+ control between
+the \&{typename} keyword and the identifier, which brings the identifier out of
+reach by resetting |class_seen=0|.
 
-Should the logic below fail, and as a consequence following some \&{typename}
-make an identifier |type_defined| that shouldn't, the literate programmer can as
-a last resort interject a \:\v or \:+ control between the \&{typename} keyword
-and the identifier, which brings the identifier out of reach (this used to be
-the only mechanism to disable \&{typename}). This is not possible in a header
-file being scanned, so as an additional precaution we do nothing
-when \&{typename} seen in header files. This is not so bad, because template
-arguments serve a local purpose in the header file anyway.
-
-@< Take action to mark identifiers following \&{class}... @>=
-{ static int class_seen=0; static id_pointer this_id;
+@< Mark identifiers as |type_defined| following keywords like \&{class}... @>=
+{ static int class_seen=0;
   switch (class_seen)
   { case 0:
     if (next_control==identifier)
       if (cur_id->ilk==struct_like) class_seen=1;
-      else if(cur_id->ilk==typename_like)
+      else if(cur_id->ilk==typename_like || cur_id->ilk==using_like)
         class_seen=2;
   break;
     case 1:
@@ -1738,11 +1755,12 @@ arguments serve a local purpose in the header file anyway.
   break;
     case 2:
     if (next_control==identifier && cur_id->ilk==normal)
-      {@; this_id=cur_id; class_seen=3; }
+      class_seen=3;
     else class_seen=0;
   break;
     case 3:
-    if (next_control!=colon_colon) this_id->ilk=type_defined;
+    if (next_control==',' || next_control=='>' || next_control=='=')
+      cur_id->ilk=type_defined;
     class_seen=0;
   }
 }

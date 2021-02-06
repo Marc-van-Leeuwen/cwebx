@@ -530,7 +530,7 @@ an operator (`$<$') which |sizeof| is never, so they should not cause confusion.
   id_lookup("try", NULL, try_like);
   id_lookup("typeid", NULL, sizeof_like);
   id_lookup("typename", NULL, typename_like);
-  id_lookup("using", NULL, int_like);
+  id_lookup("using", NULL, using_like);
   id_lookup("virtual", NULL, int_like);
   id_lookup("xor", NULL, and_like);
   id_lookup("const_cast", NULL, sizeof_like);
